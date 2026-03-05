@@ -1,0 +1,66 @@
+/**
+ * Centralized logger for Agentic Email Processing System.
+ * Sends logs to LOGGING_SERVICE_URL; event-schema fields in metadata for audit.
+ */
+
+const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
+const SERVICE_NAME = process.env.SERVICE_NAME || 'agentic-email-processing-system';
+const API_PATH = '/api/logs';
+
+async function sendLog(level, message, metadata = {}) {
+  if (!LOGGING_SERVICE_URL) {
+    const ts = new Date().toISOString();
+    console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
+      `[${ts}] [${level}] [${SERVICE_NAME}] ${message}`,
+      Object.keys(metadata).length ? metadata : ''
+    );
+    return;
+  }
+  try {
+    const payload = {
+      level: level === 'warning' ? 'warn' : level,
+      message,
+      service: SERVICE_NAME,
+      timestamp: new Date().toISOString(),
+      metadata: { ...metadata }
+    };
+    const res = await fetch(`${LOGGING_SERVICE_URL.replace(/\/$/, '')}${API_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(2000)
+    });
+    if (!res.ok) throw new Error(`Logging service ${res.status}`);
+  } catch (err) {
+    console.warn(`[${SERVICE_NAME}] Logging service failed:`, err.message);
+  }
+}
+
+/**
+ * Emit an audit event per docs/contracts/event-schema.md.
+ * @param {object} event - message_id, timestamp, agent, decision, confidence?, escalation_reason?, tenant_id?, intent?, action?, details?
+ */
+async function emitEvent(event) {
+  const message = `[event] ${event.agent} ${event.decision}`;
+  await sendLog('info', message, {
+    message_id: event.message_id,
+    timestamp: event.timestamp || new Date().toISOString(),
+    agent: event.agent,
+    decision: event.decision,
+    confidence: event.confidence ?? null,
+    escalation_reason: event.escalation_reason ?? null,
+    tenant_id: event.tenant_id,
+    intent: event.intent,
+    action: event.action,
+    details: event.details
+  });
+}
+
+module.exports = {
+  sendLog,
+  emitEvent,
+  info: (msg, meta) => sendLog('info', msg, meta),
+  warn: (msg, meta) => sendLog('warn', msg, meta),
+  error: (msg, meta) => sendLog('error', msg, meta),
+  emitEvent
+};
