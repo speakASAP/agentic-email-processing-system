@@ -9,6 +9,8 @@ let allEmails = [];
 let categories = new Set();
 let selectedId = null;
 let pollTimer = null;
+let selectedStatus = '';
+let selectedCategory = '';
 
 function $(id) { return document.getElementById(id); }
 
@@ -39,11 +41,9 @@ function runAll() {
 }
 
 function applyFilters() {
-  const statusFilter = ($('filter-status') && $('filter-status').value) || '';
-  const categoryFilter = ($('filter-category') && $('filter-category').value) || '';
   return allEmails.filter(e => {
-    if (statusFilter && e.status !== statusFilter) return false;
-    if (categoryFilter && e.category !== categoryFilter) return false;
+    if (selectedStatus && e.status !== selectedStatus) return false;
+    if (selectedCategory && e.category !== selectedCategory) return false;
     return true;
   });
 }
@@ -75,12 +75,29 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
+function setActiveFilterBtn(container, dataAttr, value) {
+  if (!container) return;
+  container.querySelectorAll('.filter-btn').forEach(btn => {
+    const val = btn.getAttribute(dataAttr);
+    btn.classList.toggle('active', (val || '') === (value || ''));
+  });
+}
+
 function fillCategoryFilter() {
-  const sel = $('filter-category');
-  if (!sel) return;
-  const opts = ['<option value="">All</option>'];
-  [...categories].sort().forEach(c => { opts.push(`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`); });
-  sel.innerHTML = opts.join('');
+  const container = $('filter-category-btns');
+  if (!container) return;
+  const parts = ['<button type="button" class="filter-btn' + (selectedCategory ? '' : ' active') + '" data-category="">All</button>'];
+  [...categories].sort().forEach(c => {
+    parts.push('<button type="button" class="filter-btn' + (selectedCategory === c ? ' active' : '') + '" data-category="' + escapeHtml(c) + '">' + escapeHtml(c) + '</button>');
+  });
+  container.innerHTML = parts.join('');
+  container.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedCategory = btn.getAttribute('data-category') || '';
+      setActiveFilterBtn(container, 'data-category', selectedCategory);
+      renderList();
+    });
+  });
 }
 
 function refreshList() {
@@ -208,8 +225,16 @@ function init() {
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);
   if ($('run-all')) $('run-all').addEventListener('click', onRunAll);
-  if ($('filter-status')) $('filter-status').addEventListener('change', renderList);
-  if ($('filter-category')) $('filter-category').addEventListener('change', renderList);
+  const statusBtns = $('filter-status-btns');
+  if (statusBtns) {
+    statusBtns.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedStatus = btn.getAttribute('data-status') || '';
+        setActiveFilterBtn(statusBtns, 'data-status', selectedStatus);
+        renderList();
+      });
+    });
+  }
 }
 
 init();

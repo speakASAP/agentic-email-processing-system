@@ -80,9 +80,31 @@ body {
   margin: 0 0 0.75rem 0;
   font-size: 1.1rem;
 }
-.filters { margin-bottom: 0.75rem; display: flex; gap: 1rem; }
-.filters label { font-size: 0.875rem; }
-.filters select { margin-left: 0.25rem; padding: 0.25rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+.filters { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-start; }
+.filter-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.filter-label { font-size: 0.875rem; font-weight: 500; color: var(--muted); }
+.filter-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.filter-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.filter-btn:hover {
+  background: var(--border);
+  border-color: var(--muted);
+}
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.filter-btn.active:hover { opacity: 0.95; }
 
 .email-list {
   list-style: none;

@@ -22,9 +22,13 @@
     .btn-secondary:hover{background:var(--border)}
     .main{padding:1.5rem;max-width:1200px;margin:0 auto}
     .list-section h2{margin:0 0 .75rem 0;font-size:1.1rem}
-    .filters{margin-bottom:.75rem;display:flex;gap:1rem}
-    .filters label{font-size:.875rem}
-    .filters select{margin-left:.25rem;padding:.25rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px}
+    .filters{margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:1.25rem;align-items:flex-start}
+    .filter-group{display:flex;flex-direction:column;gap:.5rem}
+    .filter-label{font-size:.875rem;font-weight:500;color:var(--muted)}
+    .filter-buttons{display:flex;flex-wrap:wrap;gap:.5rem}
+    .filter-btn{padding:.4rem .85rem;font-size:.8rem;font-weight:500;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
+    .filter-btn:hover{background:var(--border);border-color:var(--muted)}
+    .filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
     .email-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.5rem}
     .email-card{padding:.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.4)}
     .email-card:hover{border-color:var(--accent);transform:translateY(-1px)}
@@ -68,8 +72,22 @@
     <section class="list-section" id="list-section">
       <h2>Emails</h2>
       <div class="filters">
-        <label>Status <select id="filter-status"><option value="">All</option><option value="pending">Pending</option><option value="running">Running</option><option value="completed">Completed</option><option value="failed">Failed</option></select></label>
-        <label>Category <select id="filter-category"><option value="">All</option></select></label>
+        <div class="filter-group">
+          <span class="filter-label">Status</span>
+          <div id="filter-status-btns" class="filter-buttons">
+            <button type="button" class="filter-btn active" data-status="">All</button>
+            <button type="button" class="filter-btn" data-status="pending">Pending</button>
+            <button type="button" class="filter-btn" data-status="running">Running</button>
+            <button type="button" class="filter-btn" data-status="completed">Completed</button>
+            <button type="button" class="filter-btn" data-status="failed">Failed</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Category</span>
+          <div id="filter-category-btns" class="filter-buttons">
+            <button type="button" class="filter-btn active" data-category="">All</button>
+          </div>
+        </div>
       </div>
       <ul id="email-list" class="email-list"></ul>
     </section>
