@@ -42,22 +42,23 @@ All AI agents **live in [ai-microservice](../ai-microservice/)**. This app calls
 A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails and shows per-email workflow state.
 
 - **Start:** `npm install && npm start` (ensure `AI_SERVICE_URL` and `LOGGING_SERVICE_URL` are set in `.env`).
-- **Open:** [http://localhost:3374/demo/](http://localhost:3374/demo/) (or your configured `PORT`).
+- **Local:** Open [http://localhost:3374/](http://localhost:3374/) (root; use your configured `PORT`).
+- **Production:** Frontend only at **https://aeps.alfares.cz** (served at root `/`). No other frontend URLs.
 - **List view:** All 50 emails with subject, preview, status (pending / running / completed / failed), final category and action. Filter by status or category.
 - **Detail view:** Click an email to see a **stepper** (Ingest → Classify → Extract → Decide) with status and key inputs/outputs per stage; use **Run triage** to process that email.
 - **Run all:** Use **Run all 50 emails** to process the full dataset (one email at a time in the background). The list and detail views update via short polling (~1.5 s).
 - **Dataset:** Single source of truth is `docs/sample_intent_dataset.json` (read-only; not modified by the app). To reset demo state, restart the service.
 
-### Frontend URLs (correct paths)
+### Frontend URL (single canonical)
 
-| Context | URL | Purpose |
-| --------| -----| -----|
-| Local | `http://localhost:3374/demo` or `http://localhost:3374/demo/` | Demo app (list + detail) |
-| Local | `http://localhost:3374/demo/styles.css`, `/demo/app.js` | Static assets |
-| Local | `http://localhost:3374/health` | Health check |
-| Production | `https://agentic-email-processing-system.alfares.cz/demo` or `.../demo/` | Demo app (same behaviour) |
-| Production (alias) | `https://aeps.alfares.cz/demo` or `https://aeps.alfares.cz/` | Same demo app via short subdomain |
-| API | `GET /api/demo/emails`, `GET /api/demo/emails/:id`, `POST /api/demo/emails/:id/run`, `POST /api/demo/run-all` | Demo backend |
+| Context | URL |
+| --------| -----|
+| **Production** | **https://aeps.alfares.cz** (frontend only; nothing else) |
+| Local | `http://localhost:3374/` |
+| Health | `http://localhost:3374/health` (local) or via backend |
+| API (backend) | `GET /api/demo/emails`, `GET /api/demo/emails/:id`, `POST /api/demo/emails/:id/run`, `POST /api/demo/run-all` |
+
+**After deployment:** Run `./scripts/deploy.sh`; when the aeps.alfares.cz certificate is present (or symlinked from wildcard), **https://aeps.alfares.cz** is installed and available — it is the only frontend URL. The long domain `agentic-email-processing-system.alfares.cz` redirects to it. No `/demo` or `/demo/` paths; the app is served at root `/`.
 
 ## Port and port range
 
@@ -98,7 +99,11 @@ Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are
 
 ## Deployment
 
-Configuration and deployment follow the common approach (see [CREATE_SERVICE.md](../CREATE_SERVICE.md)): `.env` as single source of truth, integration with shared microservices, blue/green via nginx-microservice. API routes are in `nginx/nginx-api-routes.conf` (picked up by deploy-smart.sh).
+Configuration and deployment follow the common approach (see [CREATE_SERVICE.md](../CREATE_SERVICE.md)): `.env` as single source of truth, integration with shared microservices, blue/green via nginx-microservice.
+
+**Nginx config (codebase only; two files — cannot be reduced):**
+- `nginx/nginx-api-routes.conf` — List of routes (`/`, `/api/*`, `/health`) consumed by nginx-microservice’s deploy-smart.sh to update the service registry. Required; not an nginx server config.
+- `nginx/aeps.alfares.cz.conf` — Single vhost config: redirect `agentic-email-processing-system.alfares.cz` to **https://aeps.alfares.cz** and serve the app there. Copied by `scripts/deploy.sh` after blue/green so **https://aeps.alfares.cz** is available after every deployment.
 
 ### Production (Docker + blue/green)
 
@@ -110,6 +115,6 @@ Configuration and deployment follow the common approach (see [CREATE_SERVICE.md]
   ./scripts/deploy.sh
   ```
 
-  This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image, runs health checks, and switches traffic. The same script registers the alias subdomain **aeps.alfares.cz** (copies `nginx/aeps.alfares.cz.alias.conf` to nginx-microservice and reloads nginx), so the frontend is also available at **<https://aeps.alfares.cz/demo/>/>**. No manual nginx edits on prod. Deploy must be run where shared services (`LOGGING_SERVICE_URL`, `AI_SERVICE_URL`) are reachable on the same Docker network.
+  This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image, runs health checks, and switches traffic. The script then installs **https://aeps.alfares.cz** (single `nginx/aeps.alfares.cz.conf`: redirect long domain + frontend at aeps.alfares.cz). No manual nginx edits on prod. Deploy must be run where shared services (`LOGGING_SERVICE_URL`, `AI_SERVICE_URL`) are reachable on the same Docker network.
 
-**First-time setup on production:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo. For **aeps.alfares.cz** HTTPS, the deploy script creates a symlink `certificates/aeps.alfares.cz` → `alfares.cz` when a wildcard cert exists; otherwise ensure a certificate for `aeps.alfares.cz` is present in nginx-microservice's `certificates/` (e.g. via certbot or wildcard).
+**First-time setup on production:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo. For **aeps.alfares.cz** HTTPS, the deploy script creates a symlink `certificates/aeps.alfares.cz` → `alfares.cz` when a wildcard cert exists; otherwise ensure a certificate for `aeps.alfares.cz` is present in nginx-microservice's `certificates/`.

@@ -356,12 +356,11 @@ app.post('/api/demo/run-all', async (req, res) => {
   });
 });
 
-// Static demo UI: serve index.html for /demo and /demo/, then static assets
+// Frontend at root: https://aeps.alfares.cz only (served at /)
 const demoDir = path.join(__dirname, 'public', 'demo');
 const sendDemoIndex = (req, res) => res.sendFile(path.join(demoDir, 'index.html'));
-app.get('/demo', sendDemoIndex);
-app.get('/demo/', sendDemoIndex);
-app.use('/demo', express.static(demoDir));
+app.get('/', sendDemoIndex);
+app.use(express.static(demoDir));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: process.env.SERVICE_NAME || 'agentic-email-processing-system' });

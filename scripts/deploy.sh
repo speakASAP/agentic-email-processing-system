@@ -127,27 +127,46 @@ echo ""
 cd "$NGINX_MICROSERVICE_PATH"
 
 if "$DEPLOY_SCRIPT" "$SERVICE_NAME"; then
-    # Register alias subdomain aeps.alfares.cz (same backend as main domain)
-    AEPS_ALIAS_CONF="$PROJECT_ROOT/nginx/aeps.alfares.cz.alias.conf"
+    # Canonical frontend: https://aeps.alfares.cz only (single combined config)
+    AEPS_CONF="$PROJECT_ROOT/nginx/aeps.alfares.cz.conf"
     NGINX_CONF_D="$NGINX_MICROSERVICE_PATH/nginx/conf.d"
-    AEPS_DEST="$NGINX_CONF_D/z-aeps.alfares.cz.conf"
+    AEPS_DEST="$NGINX_CONF_D/aeps.alfares.cz.conf"
     CERT_DIR="$NGINX_MICROSERVICE_PATH/certificates"
-    if [ -f "$AEPS_ALIAS_CONF" ]; then
-        echo ""
-        echo -e "${YELLOW}Registering alias subdomain aeps.alfares.cz...${NC}"
-        # Ensure SSL cert for alias (symlink to wildcard alfares.cz if present)
+    NEED_RELOAD=false
+
+    if [ -f "$AEPS_CONF" ]; then
         if [ -d "$CERT_DIR/alfares.cz" ] && [ ! -e "$CERT_DIR/aeps.alfares.cz" ]; then
             ln -sfn alfares.cz "$CERT_DIR/aeps.alfares.cz"
             echo -e "${GREEN}✅ Cert symlink: aeps.alfares.cz -> alfares.cz${NC}"
         fi
-        cp "$AEPS_ALIAS_CONF" "$AEPS_DEST"
-        echo -e "${GREEN}✅ Alias config copied to $AEPS_DEST${NC}"
+        MAIN_CERT_OK=false
+        if [ -f "$CERT_DIR/agentic-email-processing-system.alfares.cz/fullchain.pem" ] && [ -f "$CERT_DIR/agentic-email-processing-system.alfares.cz/privkey.pem" ]; then
+            MAIN_CERT_OK=true
+        fi
+        AEPS_CERT_OK=false
+        if [ -f "$CERT_DIR/aeps.alfares.cz/fullchain.pem" ] && [ -f "$CERT_DIR/aeps.alfares.cz/privkey.pem" ]; then
+            AEPS_CERT_OK=true
+        fi
+        if [ "$AEPS_CERT_OK" = true ]; then
+            rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf"
+            cp "$AEPS_CONF" "$AEPS_DEST"
+            echo -e "${GREEN}✅ aeps.alfares.cz config: redirect + frontend at https://aeps.alfares.cz${NC}"
+            [ "$MAIN_CERT_OK" = true ] && echo -e "${GREEN}✅ Redirect: agentic-email-processing-system.alfares.cz -> https://aeps.alfares.cz${NC}"
+            NEED_RELOAD=true
+        elif [ -f "$AEPS_DEST" ] || [ -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" ]; then
+            rm -f "$AEPS_DEST" "$NGINX_CONF_D/00-aeps.alfares.cz.conf"
+            echo -e "${YELLOW}Removed aeps config (no cert for aeps.alfares.cz).${NC}"
+            NEED_RELOAD=true
+        fi
+    fi
+
+    if [ "$NEED_RELOAD" = true ]; then
         RELOAD_SCRIPT="$NGINX_MICROSERVICE_PATH/scripts/reload-nginx.sh"
         if [ -x "$RELOAD_SCRIPT" ]; then
             if "$RELOAD_SCRIPT"; then
-                echo -e "${GREEN}✅ Nginx reloaded (aeps.alfares.cz active)${NC}"
+                echo -e "${GREEN}✅ Nginx reloaded${NC}"
             else
-                echo -e "${YELLOW}⚠️  Nginx reload failed; alias may not be active until reload succeeds.${NC}"
+                echo -e "${YELLOW}⚠️  Nginx reload failed; run: docker logs nginx-microservice${NC}"
             fi
         else
             echo -e "${YELLOW}⚠️  Run nginx reload manually: $NGINX_MICROSERVICE_PATH/scripts/reload-nginx.sh${NC}"
@@ -159,7 +178,7 @@ if "$DEPLOY_SCRIPT" "$SERVICE_NAME"; then
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Service has been deployed using blue/green deployment."
-    echo "Frontend: https://agentic-email-processing-system.alfares.cz/demo/ and https://aeps.alfares.cz/demo/"
+    echo "Frontend: https://aeps.alfares.cz"
     echo "Check status with:"
     echo "  cd $NGINX_MICROSERVICE_PATH"
     echo "  ./scripts/status-all-services.sh"
