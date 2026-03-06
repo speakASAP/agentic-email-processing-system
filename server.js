@@ -1,7 +1,7 @@
 /**
- * Agentic Email Processing System — Phase 1: Ingest + Classifier.
+ * Agentic Email Processing System — Phase 1+2: Ingest, Classifier, Extractor, Action/Decider.
  * Uses email-triage agents from ai-microservice (AI_SERVICE_URL).
- * Contracts: docs/contracts/ (email-schema, event-schema, intent-taxonomy).
+ * Contracts: docs/contracts/ (email-schema, event-schema, intent-taxonomy, extractor, action-set, routing-rules).
  */
 
 require('dotenv').config();
