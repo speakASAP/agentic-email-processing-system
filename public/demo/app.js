@@ -51,6 +51,10 @@ function updateEmail(id, payload) {
   });
 }
 
+function fetchDemoLogs(messageId) {
+  return fetchJson(`${API}/emails/${encodeURIComponent(messageId)}/logs`).then(data => data.logs || []);
+}
+
 function applyFilters() {
   return allEmails.filter(e => {
     if (selectedStatus && e.status !== selectedStatus) return false;
@@ -308,6 +312,44 @@ function onEditSave() {
     .finally(() => { if (btn) btn.disabled = false; });
 }
 
+// --- Logs modal: show every log line for this email (micro task) ---
+function openLogsModal(messageId) {
+  const modal = $('logs-modal');
+  const content = $('logs-content');
+  if (!modal || !content) return;
+  content.textContent = 'Loading…';
+  modal.removeAttribute('hidden');
+  fetchDemoLogs(messageId)
+    .then((logs) => {
+      if (!logs.length) {
+        content.innerHTML = '<span class="logs-empty">No log lines found for this email. Run triage first or check LOGGING_SERVICE_URL.</span>';
+        return;
+      }
+      content.innerHTML = logs.map((entry) => {
+        const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
+        const level = escapeHtml(entry.level || '');
+        const msg = escapeHtml(entry.message || '');
+        const meta = entry.metadata && Object.keys(entry.metadata).length
+          ? escapeHtml(JSON.stringify(entry.metadata, null, 2))
+          : '';
+        return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
+      }).join('');
+    })
+    .catch((err) => {
+      content.innerHTML = `<span class="logs-empty">Failed to load logs: ${escapeHtml(err.message)}</span>`;
+    });
+}
+
+function closeLogsModal() {
+  const modal = $('logs-modal');
+  if (modal) modal.setAttribute('hidden', '');
+}
+
+function onSeeLogs() {
+  if (!selectedId) return;
+  openLogsModal(selectedId);
+}
+
 function init() {
   // Ensure Edit modal is closed on load (only opens when user clicks Edit)
   closeEditModal();
@@ -315,6 +357,10 @@ function init() {
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);
   if ($('run-all')) $('run-all').addEventListener('click', onRunAll);
+  if ($('see-logs')) $('see-logs').addEventListener('click', onSeeLogs);
+  if ($('logs-modal-close')) $('logs-modal-close').addEventListener('click', closeLogsModal);
+  const logsBackdrop = document.querySelector('#logs-modal .modal-backdrop');
+  if (logsBackdrop) logsBackdrop.addEventListener('click', closeLogsModal);
   if ($('edit-dataset')) $('edit-dataset').addEventListener('click', openEditModal);
   if ($('edit-modal-close')) $('edit-modal-close').addEventListener('click', closeEditModal);
   const backdrop = document.querySelector('#edit-modal .modal-backdrop');

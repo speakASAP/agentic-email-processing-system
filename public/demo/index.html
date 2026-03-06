@@ -75,6 +75,13 @@
     .form-input,.form-textarea{width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.9rem;font-family:inherit}
     .form-textarea{resize:vertical;min-height:120px}
     .modal-actions{display:flex;gap:.75rem;margin-top:1.25rem}
+    .logs-modal .modal-box{max-width:720px}
+    .logs-content{font-family:ui-monospace,monospace;font-size:.8rem;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.75rem}
+    .logs-line{margin-bottom:.6rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+    .logs-line:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+    .logs-meta{color:var(--muted);font-size:.75rem;margin-bottom:.2rem}
+    .logs-msg{color:var(--text)}
+    .logs-empty{color:var(--muted);font-style:italic}
   </style>
   <link rel="stylesheet" href="/styles.css">
 </head>
@@ -123,6 +130,21 @@
     </div>
   </div>
 
+  <!-- Modal: logs for current email (micro task) -->
+  <div id="logs-modal" class="modal logs-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="logs-modal-title">Logs for this email</h3>
+        <button type="button" id="logs-modal-close" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint" id="logs-hint">Every log line related to this micro task (message_id).</p>
+        <div id="logs-content" class="logs-content">Loading…</div>
+      </div>
+    </div>
+  </div>
+
   <main class="main">
     <section class="list-section" id="list-section">
       <h2>Emails</h2>
@@ -151,6 +173,7 @@
       <div class="detail-header">
         <button type="button" id="back" class="btn btn-secondary">← Back to list</button>
         <button type="button" id="run-one" class="btn btn-primary">Run triage</button>
+        <button type="button" id="see-logs" class="btn btn-secondary">See logs…</button>
       </div>
       <div id="detail-content" class="detail-content"></div>
     </section>

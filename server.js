@@ -264,6 +264,43 @@ app.get('/api/demo/emails/:message_id', (req, res) => {
   res.json(rec);
 });
 
+// Demo: fetch logs for this email (message_id) from central logging service for "See logs..." in GUI
+app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
+  demoDataset.ensureLoaded();
+  const message_id = req.params.message_id;
+  const rec = demoDataset.get(message_id);
+  if (!rec) return res.status(404).json({ error: 'Email not found' });
+
+  const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
+  const SERVICE_NAME = process.env.SERVICE_NAME || 'agentic-email-processing-system';
+  const limit = Math.min(Number(req.query.limit) || 300, 500);
+
+  if (!LOGGING_SERVICE_URL) {
+    return res.json({ logs: [], message: 'Logging service not configured' });
+  }
+
+  const base = LOGGING_SERVICE_URL.replace(/\/$/, '');
+  const queryUrl = `${base}/api/logs/query?service=${encodeURIComponent(SERVICE_NAME)}&limit=${limit}`;
+  try {
+    const response = await fetch(queryUrl, { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) {
+      logger.warn('Logs query failed', { status: response.status, message_id });
+      return res.json({ logs: [], error: `Logging service returned ${response.status}` });
+    }
+    const data = await response.json();
+    const all = (data && data.data && Array.isArray(data.data)) ? data.data : [];
+    const logs = all.filter((entry) => {
+      const meta = entry.metadata || {};
+      return String(meta.message_id || '') === String(message_id);
+    });
+    logs.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+    return res.json({ logs });
+  } catch (err) {
+    logger.error('Demo logs fetch error', { message_id, error: err.message });
+    return res.json({ logs: [], error: err.message || 'Failed to fetch logs' });
+  }
+});
+
 app.put('/api/demo/emails/:message_id', (req, res) => {
   demoDataset.ensureLoaded();
   const message_id = req.params.message_id;

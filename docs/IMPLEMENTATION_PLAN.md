@@ -57,6 +57,7 @@ Goal: Provide a clear, modern demo UI that allows stakeholders to inspect each e
 - ✅ Email detail view
   - ✅ Stepper for Ingest, Classify, Extract, Decide with status and key inputs/outputs.
   - ✅ Run triage button triggers `POST /api/demo/emails/:id/run`.
+  - ✅ **See logs…** button opens a modal with every log line for this email (micro task) from the central logging service; backend `GET /api/demo/emails/:message_id/logs` filters by message_id for faster debugging and customer satisfaction.
 - ✅ Edit dataset for testing
   - ✅ **Edit** button next to **Run all 50 emails** opens a modal to select any of the 50 emails and edit subject, sender, and body (plain text). Save updates in-memory and resets stages so stakeholder can run triage on the modified email.
 - ✅ Near real-time updates
