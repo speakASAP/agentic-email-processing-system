@@ -1,5 +1,5 @@
-# Agentic Email Processing System — green slot (port 3375)
-# Used by nginx-microservice deploy-smart.sh for blue/green deployment.
+# Agentic Email Processing System — green slot (host 3375, container 3374)
+# App always listens on 3374 inside container so registry health check (container:3374/health) works for both blue and green.
 
 services:
   app:
