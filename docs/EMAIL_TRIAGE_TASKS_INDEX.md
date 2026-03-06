@@ -289,20 +289,22 @@ Phase 3 (act + escalate, sync) ──► Sync D (end-to-end flow, observability 
 | ----- | --------- | ------------- | ------- |
 | 3.1 Act + Escalate | NO (sync) | Sync C | End-to-end flow: act (auto-respond/route) or escalate; observability checklist |
 
-**Sync D:** End-to-end flow and observability checklist approved. Cutover checklist complete.
+**Phase 3 implemented:** End-to-end **POST /api/triage** (ingest → classify → extract → decide → act); final event with agent=act and decision=action. Observability: [docs/OBSERVABILITY_CHECKLIST.md](OBSERVABILITY_CHECKLIST.md).
+
+**Sync D:** End-to-end flow and observability checklist approved. Status: [docs/contracts/SYNC_D_VALIDATION.md](contracts/SYNC_D_VALIDATION.md). Cutover checklist complete.
 
 ---
 
 ## 7. Validation Checklist for Cutover
 
-- [ ] Email schema and intent taxonomy frozen (Sync A).
-- [ ] All agent decisions and escalations logged; event schema in use; `LOGGING_SERVICE_URL` used.
-- [ ] No hardcoded URLs/keys; config via `.env`; keys in `.env.example` (no secret values).
-- [ ] Confidence thresholds and ambiguity handling (unknown, multi-intent, escalate-by-default) documented and applied.
-- [ ] Action set and escalation contract implemented; escalation reasons auditable.
-- [ ] At least one end-to-end path: ingest → classify → extract → decide → act or escalate.
-- [ ] Five approaches (Deutsche Telekom) documented and up to date in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`.
-- [ ] Validator sign-off on Sync A (and Sync B–D when applicable) recorded.
+- [x] Email schema and intent taxonomy frozen (Sync A).
+- [x] All agent decisions and escalations logged; event schema in use; `LOGGING_SERVICE_URL` used.
+- [x] No hardcoded URLs/keys; config via `.env`; keys in `.env.example` (no secret values).
+- [x] Confidence thresholds and ambiguity handling (unknown, multi-intent, escalate-by-default) documented and applied.
+- [x] Action set and escalation contract implemented; escalation reasons auditable.
+- [x] At least one end-to-end path: ingest → classify → extract → decide → act or escalate (POST /api/triage).
+- [x] Five approaches (Deutsche Telekom) documented and up to date in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`.
+- [x] Validator sign-off on Sync A (and Sync B–D when applicable) recorded (Sync A, B, C, D passed).
 
 ---
 
@@ -313,7 +315,8 @@ Phase 3 (act + escalate, sync) ──► Sync D (end-to-end flow, observability 
 - Integration: [docs/INTEGRATION.md](INTEGRATION.md)
 - CREATE_SERVICE: [CREATE_SERVICE.md](../../CREATE_SERVICE.md) (repo root)
 - AI microservice: [ai-microservice/README.md](../../ai-microservice/README.md)
-- Contracts (after Phase 0): `docs/contracts/` (email-schema, event-schema, intent-taxonomy, action-set, routing-rules, escalation-contract, SYNC_A_VALIDATION)
+- Contracts (after Phase 0): `docs/contracts/` (email-schema, event-schema, intent-taxonomy, action-set, routing-rules, escalation-contract, SYNC_A/B/C/D_VALIDATION)
+- Observability: [docs/OBSERVABILITY_CHECKLIST.md](OBSERVABILITY_CHECKLIST.md)
 
 ---
 

@@ -10,7 +10,7 @@ We use the **existing [ai-microservice](../../ai-microservice/)** — see [ai-mi
 - **NLP Service**, ASR, Document AI, Prototype Generator, Template Repository, Free AI, AI Workers, Gemini AI, Data Viz
 - Shared database and centralized logging
 
-**Email-triage agents are implemented in ai-microservice**: `/api/email-triage/ingest`, `/api/email-triage/classify`, `/api/email-triage/extract`, `/api/email-triage/decide`. This application proxies them via `AI_SERVICE_URL` and emits audit events to `LOGGING_SERVICE_URL`. Escalation agent (Phase 3) will be added to ai-microservice when needed.
+**Email-triage agents are implemented in ai-microservice**: `/api/email-triage/ingest`, `/api/email-triage/classify`, `/api/email-triage/extract`, `/api/email-triage/decide`. This application proxies them via `AI_SERVICE_URL` and emits audit events to `LOGGING_SERVICE_URL`. Phase 3: end-to-end **POST /api/triage** (ingest → classify → extract → decide → act) runs the full pipeline and emits a final act outcome event.
 
 ## Shared microservices
 
@@ -23,7 +23,7 @@ Do not modify production-ready services (`database-server`, `auth-microservice`,
 
 ## API and contracts
 
-API and event contracts are defined in Phase 0. **Sync A:** [SYNC_A_VALIDATION](contracts/SYNC_A_VALIDATION.md). **Sync B:** [SYNC_B_VALIDATION](contracts/SYNC_B_VALIDATION.md). **Sync C:** [SYNC_C_VALIDATION](contracts/SYNC_C_VALIDATION.md). Contract docs:
+API and event contracts are defined in Phase 0. **Sync A:** [SYNC_A_VALIDATION](contracts/SYNC_A_VALIDATION.md). **Sync B:** [SYNC_B_VALIDATION](contracts/SYNC_B_VALIDATION.md). **Sync C:** [SYNC_C_VALIDATION](contracts/SYNC_C_VALIDATION.md). **Sync D:** [SYNC_D_VALIDATION](contracts/SYNC_D_VALIDATION.md). Contract docs:
 
 - Email ingestion schema: [docs/contracts/email-schema.md](contracts/email-schema.md)
 - Event/logging schema: [docs/contracts/event-schema.md](contracts/event-schema.md)

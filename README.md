@@ -24,7 +24,7 @@ We use the **existing [ai-microservice](../ai-microservice/)** (see [ai-microser
 - **Service creation:** Follows [CREATE_SERVICE.md](../CREATE_SERVICE.md) (env discipline, logging, no hardcoded values, shared microservices).
 - **AI microservice:** [ai-microservice/README.md](../ai-microservice/README.md) — existing agents and integration; we extend with email-triage agents.
 
-## Phase 1+2 (Ingest, Classify, Extract, Decide)
+## Phase 1+2+3 (Ingest, Classify, Extract, Decide, Act)
 
 All AI agents **live in [ai-microservice](../ai-microservice/)**. This app calls them via `AI_SERVICE_URL` and emits events to `LOGGING_SERVICE_URL`.
 
@@ -32,9 +32,10 @@ All AI agents **live in [ai-microservice](../ai-microservice/)**. This app calls
 - **POST /api/classify** — Proxies to `POST /api/email-triage/classify`. Intent and confidence per [intent-taxonomy](docs/contracts/intent-taxonomy.md). Body: `{ "payload": <normalized email> }` or raw fields.
 - **POST /api/extract** — Proxies to `POST /api/email-triage/extract`. Entities per [extractor-contract](docs/contracts/extractor-contract.md). Body: `{ "payload": <normalized email>, "intent"?: <string> }`.
 - **POST /api/decide** — Proxies to `POST /api/email-triage/decide`. Action per [action-set](docs/contracts/action-set.md) and [routing-rules](docs/contracts/routing-rules.md). Body: `{ "intent", "confidence", "entities"?, "message_id"?, "tenant_id"? }`.
+- **POST /api/triage** — End-to-end pipeline: ingest → classify → extract → decide → act. Body: raw email per email-schema. Returns full result (intent, action, escalation_reason, queue) and emits events for each step plus final act outcome.
 - Events emitted per [event-schema](docs/contracts/event-schema.md).
 
-**Required:** Set `AI_SERVICE_URL` in `.env`. Run: `npm install && npm start`. Sync B: [SYNC_B_VALIDATION](docs/contracts/SYNC_B_VALIDATION.md). Sync C: [SYNC_C_VALIDATION](docs/contracts/SYNC_C_VALIDATION.md) (after Phase 2).
+**Required:** Set `AI_SERVICE_URL` in `.env`. Run: `npm install && npm start`. Sync B: [SYNC_B_VALIDATION](docs/contracts/SYNC_B_VALIDATION.md). Sync C: [SYNC_C_VALIDATION](docs/contracts/SYNC_C_VALIDATION.md). Sync D: [SYNC_D_VALIDATION](docs/contracts/SYNC_D_VALIDATION.md). Observability: [OBSERVABILITY_CHECKLIST](docs/OBSERVABILITY_CHECKLIST.md).
 
 ## Port and port range
 
