@@ -36,7 +36,7 @@ All AI agents (ingest, classifier, and future extractor, action/decider, escalat
 
 ## Port and port range
 
-Ports use the **33xx shared microservice range** (aligned with [statex](https://github.com/statex)/.env, [shop-assistant](../shop-assistant/.env), [notifications-microservice](../notifications-microservice/.env)):
+Ports use the **33xx shared microservice range** (aligned with [alfares](https://github.com/speakASAP)/.env, [shop-assistant](../shop-assistant/.env), [notifications-microservice](../notifications-microservice/.env)):
 
 | Port  | Service |
 | ----- | ------- |
@@ -57,7 +57,7 @@ All configuration is via `.env`; keys (no secret values) are in `.env.example`. 
 | -------- | ----------- | ------------------------- |
 | `PORT` | Application port (33xx range) | `3371` |
 | `PORT_BLUE` / `PORT_GREEN` | Blue/green deployment ports | `3371` / `3372` |
-| `DOMAIN` | Service domain for nginx auto-registry | `agentic-email-processing-system.statex.cz` |
+| `DOMAIN` | Service domain for nginx auto-registry | `agentic-email-processing-system.alfares.cz` |
 | `SERVICE_NAME` | Logging and auth registration | `agentic-email-processing-system` |
 | `NGINX_NETWORK_NAME` | Docker network for blue/green | `nginx-network` |
 | `LOGGING_SERVICE_URL` | Central logging (required) | `http://logging-microservice:3367` |
@@ -68,7 +68,7 @@ All configuration is via `.env`; keys (no secret values) are in `.env.example`. 
 | `CLASSIFIER_CONFIDENCE_THRESHOLD` | Intent threshold (default 0.75) | `0.75` |
 | `AUTO_RESPOND_ENABLED` | Feature flag for auto-respond | `true` / `false` |
 
-Production URLs (e.g. `https://ai.statex.cz`, `https://logging.statex.cz`) are set on the server; local `.env` uses Docker network hostnames and the ports above.
+Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are set on the server; local `.env` uses Docker network hostnames and the ports above.
 
 ## Deployment
 
