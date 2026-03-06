@@ -59,7 +59,7 @@ A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails an
 | Health | `http://localhost:3374/health` (local) or via backend |
 | API (backend) | `GET /api/demo/emails`, `GET /api/demo/emails/:id`, `GET /api/demo/emails/:id/logs` (See logs…), `PUT /api/demo/emails/:id` (edit), `POST /api/demo/emails/:id/run`, `POST /api/demo/run-all` |
 
-**After deployment:** Run `./scripts/deploy.sh`; when the aeps.alfares.cz certificate is present (or symlinked from wildcard), **<https://aeps.alfares.cz>** is installed and available — it is the only frontend URL. The long domain `agentic-email-processing-system.alfares.cz` redirects to it. No `/demo` or `/demo/` paths; the app is served at root `/`.
+**After deployment:** Run `./scripts/deploy.sh`; when the aeps.alfares.cz certificate is present (or symlinked from wildcard), **<https://aeps.alfares.cz>** is installed and available — it is the only frontend URL. The main domain `agentic-email-processing-system.alfares.cz` is served by the blue/green generated config (no duplicate `server_name`). No `/demo` or `/demo/` paths; the app is served at root `/`.
 
 ## Port and port range
 
@@ -98,13 +98,26 @@ All configuration is via `.env`; keys (no secret values) are in `.env.example`. 
 
 Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are set on the server; local `.env` uses Docker network hostnames and the ports above.
 
+### Ensuring LOGGING_SERVICE_URL and AI_SERVICE_URL
+
+- **LOGGING_SERVICE_URL** must be reachable from this app so that **"See logs…"** in the demo UI returns data. Set it to the central logging microservice (e.g. `http://logging-microservice:3367` on Docker network, or the production logging URL). The app sends all agent events there and queries by `service=` and `message_id` for the logs modal.
+- **AI_SERVICE_URL** must point at the deployed **ai-microservice** that exposes the email-triage agents (`POST /api/email-triage/ingest`, `classify`, `extract`, `decide`). Use the orchestrator base URL (e.g. `http://ai-microservice:3380` or `https://ai.alfares.cz`).
+
+**Verify connectivity:** `GET /health` returns `logging` and `ai` with values:
+
+- `ok` — service reachable (See logs… and triage will work).
+- `unreachable` — request failed or non-2xx (check URL, network, and that the other service is up).
+- `not_configured` — env var missing or empty.
+
+Example (local): `curl -s http://localhost:3374/health | jq .`
+
 ## Deployment
 
 Configuration and deployment follow the common approach (see [CREATE_SERVICE.md](../CREATE_SERVICE.md)): `.env` as single source of truth, integration with shared microservices, blue/green via nginx-microservice.
 
-**Nginx config (codebase only; same blue/green approach as other microservices):**
+**Nginx config (codebase only; per [DEPLOY_STANDARD.md](../shared/docs/DEPLOY_STANDARD.md), define each `server_name` in only one config to avoid conflicts):**
 
-- `nginx/aeps.alfares.cz.conf` — Single vhost config: redirect `agentic-email-processing-system.alfares.cz` to **<https://aeps.alfares.cz>** and serve the app there. Copied by `scripts/deploy.sh` after blue/green so **<https://aeps.alfares.cz>** is available after every deployment.
+- `nginx/aeps.alfares.cz.conf` — Single file: vhost for **aeps.alfares.cz** only (no long domain here). Placeholder `{{AEPS_UPSTREAM}}` is replaced by deploy script with `agentic-email-processing-system-blue` or `-green`; result is copied to nginx-microservice `conf.d/z-aeps.alfares.cz.conf`. Main domain is only in blue-green generated config.
 
 ### Production (Docker + blue/green)
 
@@ -116,6 +129,6 @@ Configuration and deployment follow the common approach (see [CREATE_SERVICE.md]
   ./scripts/deploy.sh
   ```
 
-  This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image, runs health checks, and switches traffic. The script then installs **<https://aeps.alfares.cz>** by copying the aeps config that matches the active color (blue or green), so the frontend works regardless of which slot is active (single `nginx/aeps.alfares.cz.conf`: redirect long domain + frontend at aeps.alfares.cz). No manual nginx edits on prod. Deploy must be run where shared services (`LOGGING_SERVICE_URL`, `AI_SERVICE_URL`) are reachable on the same Docker network.
+  This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image, runs health checks, and switches traffic. The script then installs **<https://aeps.alfares.cz>** by substituting the active upstream (blue or green) into `nginx/aeps.alfares.cz.conf` and copying to nginx-microservice `conf.d/`. No duplicate `server_name`; no manual nginx edits on prod. Deploy must be run where shared services (`LOGGING_SERVICE_URL`, `AI_SERVICE_URL`) are reachable on the same Docker network.
 
 **First-time setup on production:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo. For **aeps.alfares.cz** HTTPS, the deploy script creates a symlink `certificates/aeps.alfares.cz` → `alfares.cz` when a wildcard cert exists; otherwise ensure a certificate for `aeps.alfares.cz` is present in nginx-microservice's `certificates/`.

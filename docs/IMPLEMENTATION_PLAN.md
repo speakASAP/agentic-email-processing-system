@@ -80,7 +80,7 @@ Goal: Make it easy to run the 50-email demo end-to-end and understand what to lo
 Goal: Align demo implementation with the ecosystem’s blue/green deployment and nginx-microservice patterns.
 
 - ✅ Validate nginx integration
-  - ✅ `nginx/nginx-api-routes.conf` has `/`, `/api/*`, `/health`. `nginx/aeps.alfares.cz.conf` — single vhost: redirect long domain to **<https://aeps.alfares.cz>** and serve frontend there (codebase only).
+  - ✅ `nginx/nginx-api-routes.conf` has `/`, `/api/*`, `/health`. `nginx/aeps.alfares.cz.conf` — single file, aeps.alfares.cz only (no long domain; per DEPLOY_STANDARD avoid duplicate server_name). Deploy script substitutes `{{AEPS_UPSTREAM}}` and copies to conf.d.
   - ✅ `scripts/deploy.sh` runs nginx-microservice deploy-smart.sh for blue/green; no changes to shared microservices.
 - ✅ Document deployment steps
   - ✅ README: deployment follows common approach; nginx routes from config; no manual nginx on prod.
@@ -101,3 +101,35 @@ Goal: Align implementation with design docs and success criteria; keep documenta
   - ✅ Section 3 "Reliability and Observability": added "Implementation (current prototype)" describing logging schema, central logging integration via `utils/logger.js`, and that runbooks are ops responsibility.
 - ✅ Explanation trail in frontend
   - ✅ Detail view shows a one-line "explanation" summary (why escalated, routed where, action, category + confidence) so stakeholders see how the final decision was reached without reloading.
+- ✅ Observability checklist document
+  - ✅ `docs/OBSERVABILITY_CHECKLIST.md` created; referenced by README, SYNC_D_VALIDATION, and EMAIL_TRIAGE_TASKS_INDEX. Covers central logging, event schema, pipeline steps, error/escalation logging, demo logs API.
+
+---
+
+## 8. Current Status Summary and Action Plan
+
+### Status vs. master-prompt-development.md
+
+Execution of `docs/agents/master-prompt-development.md` is **substantially complete**. All success criteria (§8) are met:
+
+| Criterion | Status |
+| --------- | ------ |
+| 1. End-to-end demo: 50 emails through full pipeline; max 30 items/request; errors handled and logged | ✅ Done (run-all processes one-by-one; logging via utils/logger.js) |
+| 2. Frontend: list + detail, stages, status, I/O, real-time updates | ✅ Done (short polling ~1.5 s, stepper, See logs…, Edit) |
+| 3. Integration: ai-microservice + logging correct | ✅ Done (AI_SERVICE_URL, LOGGING_SERVICE_URL; contracts followed) |
+| 4. Deployment documented and repeatable | ✅ Done (README, scripts/deploy.sh, nginx in codebase) |
+| 5. Documentation up to date | ✅ Done (this plan with ✅; FIVE_APPROACHES updated; README demo; OBSERVABILITY_CHECKLIST added) |
+
+### Completed in This Pass
+
+- **Missing artifact fixed:** `docs/OBSERVABILITY_CHECKLIST.md` was referenced by README, SYNC_D_VALIDATION, and EMAIL_TRIAGE_TASKS_INDEX but did not exist. It has been created and aligns with event-schema, logger usage, and Sync D.
+
+### Remaining (Optional / Verification)
+
+No mandatory implementation work remains for the master-prompt-development scope. Optional follow-ups:
+
+1. **Smoke test on prod:** After `git pull` on prod, run `./scripts/deploy.sh` and verify <https://aeps.alfares.cz> loads, then run one email and "Run all 50" to confirm end-to-end and polling.
+2. **Logging microservice:** Ensure `LOGGING_SERVICE_URL` is reachable from the app (local and prod) so "See logs…" returns data; if not, check network and env.
+3. **ai-microservice:** Ensure email-triage agents (ingest, classify, extract, decide) are deployed and `AI_SERVICE_URL` points to them; otherwise triage will fail with 503 or ingest/classify errors.
+
+If new requirements appear (e.g. persistence to DB, new intents, or different frontend), add them as new tasks in Section 2–7 and track with ✅ as they are completed.

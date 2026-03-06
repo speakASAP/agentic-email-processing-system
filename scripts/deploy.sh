@@ -131,14 +131,14 @@ echo ""
 cd "$NGINX_MICROSERVICE_PATH"
 
 if "$DEPLOY_SCRIPT" "$SERVICE_NAME"; then
-    # Canonical frontend: https://aeps.alfares.cz — same blue/green approach as other microservices.
-    # Copy the aeps config that matches the active main-domain symlink (blue or green).
+    # Canonical frontend: https://aeps.alfares.cz — single config (aeps.alfares.cz only, no duplicate server_name).
     NGINX_CONF_D="$NGINX_MICROSERVICE_PATH/nginx/conf.d"
     AEPS_DEST="$NGINX_CONF_D/z-aeps.alfares.cz.conf"
+    AEPS_SRC="$PROJECT_ROOT/nginx/aeps.alfares.cz.conf"
     CERT_DIR="$NGINX_MICROSERVICE_PATH/certificates"
     NEED_RELOAD=false
 
-    # Detect active color from main domain symlink (e.g. blue-green/agentic-...alfares.cz.blue.conf -> blue)
+    # Detect active color from main domain symlink (blue-green/agentic-...alfares.cz.blue.conf -> blue)
     MAIN_SYMLINK="$NGINX_CONF_D/agentic-email-processing-system.alfares.cz.conf"
     SYMLINK_TARGET=""
     if [ -L "$MAIN_SYMLINK" ]; then
@@ -152,16 +152,12 @@ if "$DEPLOY_SCRIPT" "$SERVICE_NAME"; then
             ACTIVE_COLOR="blue"
         fi
     fi
-    AEPS_CONF="$PROJECT_ROOT/nginx/aeps.alfares.cz.${ACTIVE_COLOR}.conf"
+    AEPS_UPSTREAM="agentic-email-processing-system-${ACTIVE_COLOR}"
 
-    if [ -f "$AEPS_CONF" ]; then
+    if [ -f "$AEPS_SRC" ]; then
         if [ -d "$CERT_DIR/alfares.cz" ] && [ ! -e "$CERT_DIR/aeps.alfares.cz" ]; then
             ln -sfn alfares.cz "$CERT_DIR/aeps.alfares.cz"
             echo -e "${GREEN}✅ Cert symlink: aeps.alfares.cz -> alfares.cz${NC}"
-        fi
-        MAIN_CERT_OK=false
-        if [ -f "$CERT_DIR/agentic-email-processing-system.alfares.cz/fullchain.pem" ] && [ -f "$CERT_DIR/agentic-email-processing-system.alfares.cz/privkey.pem" ]; then
-            MAIN_CERT_OK=true
         fi
         AEPS_CERT_OK=false
         if [ -f "$CERT_DIR/aeps.alfares.cz/fullchain.pem" ] && [ -f "$CERT_DIR/aeps.alfares.cz/privkey.pem" ]; then
@@ -169,9 +165,8 @@ if "$DEPLOY_SCRIPT" "$SERVICE_NAME"; then
         fi
         if [ "$AEPS_CERT_OK" = true ]; then
             rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/aeps.alfares.cz.conf" "$AEPS_DEST"
-            cp "$AEPS_CONF" "$AEPS_DEST"
-            echo -e "${GREEN}✅ aeps.alfares.cz config ($ACTIVE_COLOR): redirect + frontend at https://aeps.alfares.cz${NC}"
-            [ "$MAIN_CERT_OK" = true ] && echo -e "${GREEN}✅ Redirect: agentic-email-processing-system.alfares.cz -> https://aeps.alfares.cz${NC}"
+            sed "s/{{AEPS_UPSTREAM}}/$AEPS_UPSTREAM/g" "$AEPS_SRC" > "$AEPS_DEST"
+            echo -e "${GREEN}✅ aeps.alfares.cz config ($ACTIVE_COLOR): frontend at https://aeps.alfares.cz${NC}"
             NEED_RELOAD=true
         elif [ -f "$AEPS_DEST" ] || [ -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" ] || [ -f "$NGINX_CONF_D/aeps.alfares.cz.conf" ]; then
             rm -f "$AEPS_DEST" "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/aeps.alfares.cz.conf"

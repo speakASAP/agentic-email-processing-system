@@ -414,8 +414,44 @@ const sendDemoIndex = (req, res) => res.sendFile(path.join(demoDir, 'index.html'
 app.get('/', sendDemoIndex);
 app.use(express.static(demoDir));
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: process.env.SERVICE_NAME || 'agentic-email-processing-system' });
+// Check reachability of LOGGING_SERVICE_URL (for "See logs…") and AI_SERVICE_URL (email-triage agents)
+const HEALTH_CHECK_TIMEOUT_MS = 3000;
+
+async function checkLoggingReachable() {
+  const url = process.env.LOGGING_SERVICE_URL;
+  if (!url || !url.trim()) return 'not_configured';
+  const base = url.replace(/\/$/, '');
+  const service = process.env.SERVICE_NAME || 'agentic-email-processing-system';
+  const queryUrl = `${base}/api/logs/query?service=${encodeURIComponent(service)}&limit=1`;
+  try {
+    const res = await fetch(queryUrl, { signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
+    return res.ok ? 'ok' : 'unreachable';
+  } catch {
+    return 'unreachable';
+  }
+}
+
+async function checkAiReachable() {
+  const url = process.env.AI_SERVICE_URL;
+  if (!url || !url.trim()) return 'not_configured';
+  const base = url.replace(/\/$/, '');
+  const healthUrl = `${base}/health`;
+  try {
+    const res = await fetch(healthUrl, { signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
+    return res.ok ? 'ok' : 'unreachable';
+  } catch {
+    return 'unreachable';
+  }
+}
+
+app.get('/health', async (req, res) => {
+  const [logging, ai] = await Promise.all([checkLoggingReachable(), checkAiReachable()]);
+  res.json({
+    status: 'ok',
+    service: process.env.SERVICE_NAME || 'agentic-email-processing-system',
+    logging,
+    ai
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
