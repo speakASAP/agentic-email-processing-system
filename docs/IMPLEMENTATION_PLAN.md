@@ -89,4 +89,3 @@ Goal: Align demo implementation with the ecosystem’s blue/green deployment and
 3. ✅ Frontend UI list + detail + short polling (Section 3).
 4. ✅ README demo instructions (Section 4).
 5. ✅ Nginx and deployment review (Section 5); containerization as needed.
-

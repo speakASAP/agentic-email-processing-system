@@ -272,7 +272,7 @@ You must **not** contradict these artifacts. If you discover inconsistencies or 
       - Show any warning or error if the stage failed.
     - Show final **category and action**, plus any escalation info.
 - The UI must be **clear and non-technical enough** that stakeholders can see how the agents behave and why a decision was made.
- - Ensure the frontend receives status updates in **near real time** (e.g. via short polling, server-sent events, or websockets) so that the visual flow animates as each stage completes, without requiring manual page refresh.
+- Ensure the frontend receives status updates in **near real time** (e.g. via short polling, server-sent events, or websockets) so that the visual flow animates as each stage completes, without requiring manual page refresh.
 
 #### 6.4 Integration, Logging, and Observability
 
@@ -366,8 +366,5 @@ Your work is considered successful when:
 4. **Design a minimal, concrete implementation plan**:
    - Choose how to store email processing state.
    - Decide how frontend will consume backend APIs.
-   - Plan how the 50-email dataset will be represented and seeded.
-5. **Begin implementation**:
    - Start with backend endpoints and data flow for a **single email** end-to-end.
    - Then generalize to the full 50-email dataset and wire up the frontend visualization.
-
