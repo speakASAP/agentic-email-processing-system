@@ -46,7 +46,7 @@ A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails an
 - **Production:** Frontend only at **https://aeps.alfares.cz** (served at root `/`). No other frontend URLs.
 - **List view:** All 50 emails with subject, preview, status (pending / running / completed / failed), final category and action. Filter by status or category.
 - **Detail view:** Click an email to see a **stepper** (Ingest → Classify → Extract → Decide) with status and key inputs/outputs per stage; use **Run triage** to process that email.
-- **Run all:** Use **Run all 50 emails** to process the full dataset (one email at a time in the background). The list and detail views update via short polling (~1.5 s).
+- **Run all:** Use **Run all 50 emails** to process the full dataset (one email at a time in the background). The list and detail views update via short polling (~1.5 s). **Polling** shows “Polling…” only while at least one email is in progress; it stops automatically when no emails are running (completed or failed) or when a poll request fails (e.g. network error), so the status text is cleared.
 - **Edit:** Use **Edit** (next to Run all 50 emails) to change any sample email for real-time testing: select an email from the list, edit subject, sender, and body, then Save. Edits are in-memory only; stages reset to pending so you can run triage on the updated content.
 - **Dataset:** Single source of truth is `docs/sample_intent_dataset.json` (read-only on disk; in-memory copies can be edited via the UI). To reset demo state, restart the service.
 

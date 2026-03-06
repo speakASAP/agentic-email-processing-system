@@ -62,6 +62,7 @@ Goal: Provide a clear, modern demo UI that allows stakeholders to inspect each e
 - ✅ Near real-time updates
   - ✅ Short-polling (~1.5 s) so stage transitions visible without refresh.
   - ✅ UI shows pending / running / completed / failed per stage.
+  - ✅ Polling stops when no emails are running (all completed or failed) or when a poll request fails (e.g. fetch failed); “Polling…” is cleared so the UI does not suggest ongoing activity after failure or completion.
 
 ## 4. Demo Flow and Documentation
 
@@ -78,7 +79,7 @@ Goal: Make it easy to run the 50-email demo end-to-end and understand what to lo
 Goal: Align demo implementation with the ecosystem’s blue/green deployment and nginx-microservice patterns.
 
 - ✅ Validate nginx integration
-  - ✅ `nginx/nginx-api-routes.conf` has `/`, `/api/*`, `/health`. `nginx/aeps.alfares.cz.conf` = redirect + frontend at https://aeps.alfares.cz (codebase only).
+  - ✅ `nginx/nginx-api-routes.conf` has `/`, `/api/*`, `/health`. `nginx/aeps.alfares.cz.blue.conf` and `nginx/aeps.alfares.cz.green.conf` — one config per color (same blue/green approach as other microservices): redirect long domain to https://aeps.alfares.cz and proxy to the active container. Deploy script copies the one matching the main-domain symlink (codebase only).
 - ✅ Containerization and scripts
   - ✅ Dockerfile + .dockerignore; docker-compose.yml, docker-compose.blue.yml, docker-compose.green.yml (ports 3374/3375, nginx-network).
   - ✅ `scripts/deploy.sh` runs nginx-microservice deploy-smart.sh for blue/green; no changes to shared microservices.

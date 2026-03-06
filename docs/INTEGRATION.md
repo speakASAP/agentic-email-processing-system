@@ -33,6 +33,10 @@ API and event contracts are defined in Phase 0. **Sync A:** [SYNC_A_VALIDATION](
 - Escalation contract: [docs/contracts/escalation-contract.md](contracts/escalation-contract.md)
 - Extractor contract (Sync B): [docs/contracts/extractor-contract.md](contracts/extractor-contract.md)
 
+## Demo UI and frontend
+
+The demo is a static frontend served at root `/` (local: `http://localhost:3374/`, production: **https://aeps.alfares.cz** only). It lists the 50-email dataset which can be edited in memory, allows running triage (single or all), and shows per-stage status with short polling. Polling stops when no emails are running or when a poll request fails. See [README.md](../README.md#demo-50-email-dataset) for full demo usage.
+
 ## Environment and ports
 
 All configuration via `.env`; see `.env.example` for required keys (values only in local `.env`, never committed). This service uses the **33xx shared microservice port range**: `PORT=3374`, `PORT_GREEN=3375`. See [README.md](../README.md#port-and-port-range) for the full port table and service URLs.

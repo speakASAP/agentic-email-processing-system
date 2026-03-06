@@ -309,6 +309,8 @@ function onEditSave() {
 }
 
 function init() {
+  // Ensure Edit modal is closed on load (only opens when user clicks Edit)
+  closeEditModal();
   refreshList().catch(() => {});
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);
