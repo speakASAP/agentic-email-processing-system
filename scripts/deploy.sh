@@ -51,7 +51,7 @@ if [ -d ".git" ]; then
 fi
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║      Agentic Email Processing System - Production Deployment                 ║${NC}"
+echo -e "${BLUE}║        Agentic Email Processing System - Production Deployment                 ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -59,11 +59,28 @@ echo ""
 SERVICE_NAME="agentic-email-processing-system"
 DISPLAY_NAME="Agentic Email Processing System"
 
-# Detect nginx-microservice path
+# Ports used by this service (blue=3374, green=3375) — free them before deploy to avoid "port already allocated"
+PORT_BLUE="${PORT_BLUE:-3374}"
+PORT_GREEN="${PORT_GREEN:-3375}"
+
+# Stop and remove any container currently binding our ports so deploy-smart.sh can start green
+free_our_ports() {
+    local id name count=0
+    while read -r id name rest; do
+        [ -z "$id" ] && continue
+        echo -e "${YELLOW}Stopping container using port ${PORT_BLUE}/${PORT_GREEN}: $name${NC}"
+        docker stop "$id" 2>/dev/null || true
+        docker rm -f "$id" 2>/dev/null || true
+        count=$((count + 1))
+    done < <(docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' 2>/dev/null | grep -E ":(${PORT_BLUE}|${PORT_GREEN})->" || true)
+    [ "$count" -gt 0 ] && echo -e "${GREEN}✓ Ports ${PORT_BLUE}/${PORT_GREEN} freed${NC}" && sleep 1
+}
+
+free_our_ports
+
+# Detect nginx-microservice path (production: alfares.cz server)
 NGINX_MICROSERVICE_PATH=""
-if [ -d "/home/statex/nginx-microservice" ]; then
-    NGINX_MICROSERVICE_PATH="/home/statex/nginx-microservice"
-elif [ -d "/home/alfares/nginx-microservice" ]; then
+if [ -d "/home/alfares/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="/home/alfares/nginx-microservice"
 elif [ -d "$HOME/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="$HOME/nginx-microservice"
@@ -77,8 +94,7 @@ if [ -z "$NGINX_MICROSERVICE_PATH" ] || [ ! -d "$NGINX_MICROSERVICE_PATH" ]; the
     echo -e "${RED}❌ Error: nginx-microservice not found${NC}"
     echo ""
     echo "Ensure nginx-microservice is in one of:"
-    echo "  - /home/statex/nginx-microservice"
-    echo "  - /home/alfares/nginx-microservice"
+    echo "  - /home/alfares/nginx-microservice (production)"
     echo "  - $HOME/nginx-microservice"
     echo "  - $(dirname "$PROJECT_ROOT")/nginx-microservice"
     echo ""
@@ -116,10 +132,10 @@ if "$DEPLOY_SCRIPT" "$SERVICE_NAME"; then
     END_TIME=$(get_timestamp_seconds)
     TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
     echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║  ✅ ${DISPLAY_NAME} deployment completed successfully!               ║${NC}"
-    echo -e "${GREEN}║     Total time: ${TOTAL_DURATION}s                                          ║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║ ✅ Agentic Email Processing System deployment completed successfully! ║${NC}"
+    echo -e "${GREEN}║     Total time: ${TOTAL_DURATION}s                                    ║${NC}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Check status: cd $NGINX_MICROSERVICE_PATH && ./scripts/status-all-services.sh"
     exit 0
@@ -128,7 +144,8 @@ else
     TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
     echo ""
     echo -e "${RED}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║  ❌ ${DISPLAY_NAME} deployment failed! (after ${TOTAL_DURATION}s)       ║${NC}"
+    echo -e "${RED}║      ❌ Agentic Email Processing System deployment failed!           ║${NC}"
+    echo -e "${RED}║         (after ${TOTAL_DURATION}s)                                   ║${NC}"
     echo -e "${RED}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Check: $NGINX_MICROSERVICE_PATH/service-registry/$SERVICE_NAME.json"

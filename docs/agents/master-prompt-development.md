@@ -81,7 +81,7 @@ You MUST also obey the following **project rules and user constraints**:
 - **Nginx and deployment:**
   - All configuration must live in the **codebase**, not edited by hand on prod.
   - Production nginx microservices are regenerated every deployment by scripts like:
-    - `./nginx-microservice/scripts/blue-green/deploy-smart.sh statex`
+    - `./nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`
     - `./nginx-microservice/scripts/blue-green/deploy-smart.sh notifications-microservice`
     - `./agentic-email-processing-system/scripts/deploy.sh`
     - `./beauty/scripts/deploy.sh`

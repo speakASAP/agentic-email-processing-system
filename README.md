@@ -66,7 +66,7 @@ Configure via `.env`: `PORT=3374`, `PORT_BLUE=3374`, `PORT_GREEN=3375`. The app 
 
 ## Environment and services
 
-All configuration is via `.env`; keys (no secret values) are in `.env.example`. Variable names match statex, shop-assistant, and notifications-microservice where applicable.
+All configuration is via `.env`; keys (no secret values) are in `.env.example`. Variable names match other services in the ecosystem (e.g. notifications-microservice) where applicable.
 
 | Variable | Description | Example (Docker network) |
 | -------- | ----------- | ------------------------- |
@@ -93,10 +93,10 @@ Configuration and deployment follow the common approach (see [CREATE_SERVICE.md]
 
 - **Build:** `docker compose build` or `docker build -t agentic-email-processing-system .`
 - **Run locally (single container):** `docker compose up -d` (requires `nginx-network` and `.env`).
-- **Deploy to production:** From the server (e.g. after `git pull` in this repo), run:
+- **Deploy to production (alfares.cz):** On the production server, from this repo (e.g. after `git pull`), run:
   ```bash
   ./scripts/deploy.sh
   ```
   This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image from `docker-compose.green.yml`, runs health checks, and switches traffic. No manual nginx edits on prod.
 
-**First-time setup on the server:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo.
+**First-time setup on production:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo.
