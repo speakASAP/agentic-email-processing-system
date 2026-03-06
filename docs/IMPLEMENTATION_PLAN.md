@@ -37,6 +37,7 @@ Goal: Manage the fixed 50-email dataset and expose per-email workflow state for 
 - ✅ Backend demo API for the dataset
   - ✅ `GET /api/demo/emails` — List emails with message_id, subject, preview, status, category, action.
   - ✅ `GET /api/demo/emails/:message_id` — Detail: payload, per-stage status, inputs/outputs, escalation.
+  - ✅ `PUT /api/demo/emails/:message_id` — Update email payload in-memory (subject, sender, body_plain, etc.) for real-time testing; stages reset to pending.
   - ✅ `POST /api/demo/emails/:message_id/run` — Run full pipeline for one email (202 + background).
   - ✅ `POST /api/demo/run-all` — Run all emails one-by-one (202 + background).
 - ✅ Logging and observability for demo mode
@@ -56,6 +57,8 @@ Goal: Provide a clear, modern demo UI that allows stakeholders to inspect each e
 - ✅ Email detail view
   - ✅ Stepper for Ingest, Classify, Extract, Decide with status and key inputs/outputs.
   - ✅ Run triage button triggers `POST /api/demo/emails/:id/run`.
+- ✅ Edit dataset for testing
+  - ✅ **Edit** button next to **Run all 50 emails** opens a modal to select any of the 50 emails and edit subject, sender, and body (plain text). Save updates in-memory and resets stages so stakeholder can run triage on the modified email.
 - ✅ Near real-time updates
   - ✅ Short-polling (~1.5 s) so stage transitions visible without refresh.
   - ✅ UI shows pending / running / completed / failed per stage.

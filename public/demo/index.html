@@ -55,6 +55,25 @@
     .final .category{font-weight:600}
     .final .action,.final .escalation{margin-top:.25rem}
     .empty{color:var(--muted);font-style:italic}
+    .modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem}
+    .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.7)}
+    .modal-box{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-width:560px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+    .modal-header h3{margin:0;font-size:1.15rem}
+    .modal-close{background:none;border:none;color:var(--muted);font-size:1.5rem;cursor:pointer;line-height:1;padding:0 .25rem}
+    .modal-close:hover{color:var(--text)}
+    .modal-body{padding:1.25rem}
+    .modal-hint{color:var(--muted);font-size:.9rem;margin:0 0 1rem 0}
+    .email-pick-list{list-style:none;padding:0;margin:0;max-height:320px;overflow-y:auto}
+    .email-pick-list li{padding:.6rem .75rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;cursor:pointer;font-size:.9rem}
+    .email-pick-list li:hover{background:var(--border);border-color:var(--accent)}
+    .email-pick-list .pick-subject{font-weight:600}
+    .email-pick-list .pick-id{font-size:.75rem;color:var(--muted)}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;font-size:.875rem;font-weight:500;margin-bottom:.35rem;color:var(--muted)}
+    .form-input,.form-textarea{width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:.9rem;font-family:inherit}
+    .form-textarea{resize:vertical;min-height:120px}
+    .modal-actions{display:flex;gap:.75rem;margin-top:1.25rem}
   </style>
   <link rel="stylesheet" href="/styles.css">
 </head>
@@ -64,9 +83,44 @@
     <p class="subtitle">50 test emails · Ingest → Classify → Extract → Decide</p>
     <div class="actions">
       <button type="button" id="run-all" class="btn btn-primary">Run all 50 emails</button>
+      <button type="button" id="edit-dataset" class="btn btn-secondary">Edit</button>
       <span id="poll-status" class="poll-status"></span>
     </div>
   </header>
+
+  <!-- Modal: select email to edit then edit form -->
+  <div id="edit-modal" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="edit-modal-title">Edit sample email</h3>
+        <button type="button" id="edit-modal-close" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div id="edit-step-select" class="modal-body">
+        <p class="modal-hint">Select an email to edit for real-time testing.</p>
+        <ul id="edit-email-pick-list" class="email-pick-list"></ul>
+      </div>
+      <div id="edit-step-form" class="modal-body" hidden>
+        <input type="hidden" id="edit-message-id" value="">
+        <div class="form-group">
+          <label for="edit-subject">Subject</label>
+          <input type="text" id="edit-subject" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="edit-sender">From (sender)</label>
+          <input type="text" id="edit-sender" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="edit-body">Body (plain text)</label>
+          <textarea id="edit-body" class="form-textarea" rows="8"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="edit-back" class="btn btn-secondary">← Back to list</button>
+          <button type="button" id="edit-save" class="btn btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <main class="main">
     <section class="list-section" id="list-section">

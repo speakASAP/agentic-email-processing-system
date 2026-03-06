@@ -40,6 +40,17 @@ function runAll() {
   });
 }
 
+function updateEmail(id, payload) {
+  return fetch(`${API}/emails/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: payload })
+  }).then(r => {
+    if (!r.ok) throw new Error(r.statusText);
+    return r.json();
+  });
+}
+
 function applyFilters() {
   return allEmails.filter(e => {
     if (selectedStatus && e.status !== selectedStatus) return false;
@@ -233,11 +244,81 @@ function onRunAll() {
   runAll().then(() => { startPolling(); if (btn) btn.disabled = false; }).catch(err => { alert(err.message); if (btn) btn.disabled = false; });
 }
 
+// --- Edit modal: select email then edit form ---
+function openEditModal() {
+  const modal = $('edit-modal');
+  const stepSelect = $('edit-step-select');
+  const stepForm = $('edit-step-form');
+  if (!modal || !stepSelect || !stepForm) return;
+  stepSelect.removeAttribute('hidden');
+  stepForm.setAttribute('hidden', '');
+  const listEl = $('edit-email-pick-list');
+  if (listEl) {
+    listEl.innerHTML = allEmails.length ? allEmails.map(e => `
+      <li data-id="${escapeHtml(e.message_id)}">
+        <div class="pick-subject">${escapeHtml(e.subject || '(no subject)')}</div>
+        <div class="pick-id">${escapeHtml(e.message_id)}</div>
+      </li>
+    `).join('') : '<li class="empty">No emails loaded.</li>';
+    listEl.querySelectorAll('li[data-id]').forEach(li => {
+      li.addEventListener('click', () => {
+        const id = li.getAttribute('data-id');
+        if (!id) return;
+        getEmail(id).then(rec => {
+          const email = rec.email || {};
+          $('edit-message-id').value = id;
+          $('edit-subject').value = email.subject || '';
+          $('edit-sender').value = email.sender || '';
+          $('edit-body').value = email.body_plain || email.body_html || '';
+          stepSelect.setAttribute('hidden', '');
+          stepForm.removeAttribute('hidden');
+        }).catch(() => {});
+      });
+    });
+  }
+  modal.removeAttribute('hidden');
+}
+
+function closeEditModal() {
+  const modal = $('edit-modal');
+  if (modal) modal.setAttribute('hidden', '');
+}
+
+function onEditBack() {
+  $('edit-step-form').setAttribute('hidden', '');
+  $('edit-step-select').removeAttribute('hidden');
+}
+
+function onEditSave() {
+  const messageId = $('edit-message-id').value;
+  if (!messageId) return;
+  const payload = {
+    subject: $('edit-subject').value.trim() || undefined,
+    sender: $('edit-sender').value.trim() || undefined,
+    body_plain: $('edit-body').value
+  };
+  const btn = $('edit-save');
+  if (btn) btn.disabled = true;
+  updateEmail(messageId, payload)
+    .then(() => {
+      closeEditModal();
+      refreshList().then(() => { if (selectedId === messageId) loadDetail(messageId); });
+    })
+    .catch(err => { alert(err.message); })
+    .finally(() => { if (btn) btn.disabled = false; });
+}
+
 function init() {
   refreshList().catch(() => {});
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);
   if ($('run-all')) $('run-all').addEventListener('click', onRunAll);
+  if ($('edit-dataset')) $('edit-dataset').addEventListener('click', openEditModal);
+  if ($('edit-modal-close')) $('edit-modal-close').addEventListener('click', closeEditModal);
+  const backdrop = document.querySelector('#edit-modal .modal-backdrop');
+  if (backdrop) backdrop.addEventListener('click', closeEditModal);
+  if ($('edit-back')) $('edit-back').addEventListener('click', onEditBack);
+  if ($('edit-save')) $('edit-save').addEventListener('click', onEditSave);
   const statusBtns = $('filter-status-btns');
   if (statusBtns) {
     statusBtns.querySelectorAll('.filter-btn').forEach(btn => {

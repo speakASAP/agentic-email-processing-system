@@ -264,6 +264,21 @@ app.get('/api/demo/emails/:message_id', (req, res) => {
   res.json(rec);
 });
 
+app.put('/api/demo/emails/:message_id', (req, res) => {
+  demoDataset.ensureLoaded();
+  const message_id = req.params.message_id;
+  const rec = demoDataset.get(message_id);
+  if (!rec) return res.status(404).json({ error: 'Email not found' });
+  const payload = req.body && req.body.email ? req.body.email : req.body;
+  if (!payload || typeof payload !== 'object') {
+    return res.status(400).json({ error: 'Body must include email payload (e.g. { email: { subject, sender, body_plain } })' });
+  }
+  const ok = demoDataset.updateEmail(message_id, payload);
+  if (!ok) return res.status(400).json({ error: 'Update failed' });
+  logger.info('Demo email updated', { message_id });
+  res.json({ ok: true, message_id });
+});
+
 app.post('/api/demo/emails/:message_id/run', async (req, res) => {
   demoDataset.ensureLoaded();
   const message_id = req.params.message_id;
