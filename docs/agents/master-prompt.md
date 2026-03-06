@@ -122,9 +122,9 @@ We **extend** this foundation with our **email-triage–specific agents** (imple
 
 - **Ingest Agent** — Normalize and validate incoming email payloads. In ai-microservice: `POST /api/email-triage/ingest`.
 - **Classifier Agent** — Intent classification (support, sales, contract, technical, billing, spam/irrelevant, unknown, multi_intent). In ai-microservice: `POST /api/email-triage/classify`.
-- **Extractor Agent** — Extract entities and structured data (to be added to ai-microservice; Phase 2).
-- **Action/Decider Agent** — Choose action: auto-respond, route to queue, or escalate (to be added to ai-microservice).
-- **Escalation Agent** — Evaluate escalation reasons and route to the correct human queue (to be added to ai-microservice).
+- **Extractor Agent** — Extract entities and structured data. In ai-microservice: `POST /api/email-triage/extract`.
+- **Action/Decider Agent** — Choose action: auto-respond, route to queue, or escalate. In ai-microservice: `POST /api/email-triage/decide`. Returns action, escalation_reason, queue.
+- **Escalation Agent** — Escalation reasons and queue routing are handled within the Action/Decider (decide returns escalation_reason and queue per escalation-contract); no separate endpoint. Full audit via event-schema.
 
 All new agents must follow ai-microservice patterns (logging to `LOGGING_SERVICE_URL`, config via `.env`, no hardcoded secrets) and expose clear input/output contracts.
 
@@ -197,8 +197,8 @@ Use the **existing ai-microservice** and **extend** with specialized agents as f
 - **Ingest Agent** — Normalize and validate incoming email payloads (extend ai-microservice or adapter in this system).
 - **Classifier Agent** — Intent classification (support, sales, contract, technical, billing, spam/irrelevant); extend ai-microservice (e.g. NLP/LLM) with this capability.
 - **Extractor Agent** — Extract entities and structured data from body and attachments; extend ai-microservice (e.g. Document AI / NLP) where applicable.
-- **Action/Decider Agent** — Choose action: auto-respond, route to queue, or escalate (new agent).
-- **Escalation Agent** — Evaluate escalation reasons and route to correct human queue (new agent).
+- **Action/Decider Agent** — Choose action: auto-respond, route to queue, or escalate (implemented in ai-microservice).
+- **Escalation Agent** — Escalation evaluation and queue routing are implemented inside the Action/Decider (same agent returns escalation_reason and queue).
 - **Orchestrator/Coordinator** — This Lead Orchestrator; coordinates with ai-microservice AI Orchestrator and enforces contracts and sync points.
 - **Validator Agent** — Audits outputs against contracts and business rules.
 

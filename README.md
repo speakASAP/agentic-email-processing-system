@@ -76,4 +76,4 @@ Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are
 
 ## Deployment
 
-Configuration and deployment follow the common approach: `.env` as single source of truth, integration with shared microservices (auth, database, logging, etc.), blue/green pattern via nginx-microservice where applicable.
+Configuration and deployment follow the common approach: `.env` as single source of truth, integration with shared microservices (auth, database, logging, etc.), blue/green pattern via nginx-microservice where applicable. API routes are registered from `nginx/nginx-api-routes.conf` (picked up by nginx-microservice deploy-smart.sh).

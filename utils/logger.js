@@ -5,7 +5,7 @@
 
 const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'agentic-email-processing-system';
-const API_PATH = '/api/logs';
+const API_PATH = process.env.LOGGING_SERVICE_API_PATH || '/api/logs';
 
 async function sendLog(level, message, metadata = {}) {
   if (!LOGGING_SERVICE_URL) {
