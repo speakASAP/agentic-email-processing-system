@@ -36,18 +36,19 @@ All AI agents (ingest, classifier, and future extractor, action/decider, escalat
 
 ## Port and port range
 
-Ports use the **33xx shared microservice range** (aligned with [alfares](https://github.com/speakASAP)/.env, [shop-assistant](../shop-assistant/.env), [notifications-microservice](../notifications-microservice/.env)):
+Ports use the **33xx shared microservice range**, aligned with root [README.md](../README.md) (3371–3373 = auth-microservice; 3380+ = ai-microservice). This service uses **3374 (blue)** and **3375 (green)** to avoid conflict:
 
 | Port  | Service |
 | ----- | ------- |
 | 3367  | logging-microservice |
 | 3368  | notifications-microservice (blue) |
 | 3369  | notifications-microservice (green) |
-| 3370  | auth-microservice |
-| **3371** | **agentic-email-processing-system (blue)** |
-| **3372** | **agentic-email-processing-system (green)** |
+| 3370–3373 | auth-microservice (backend + frontend blue/green) |
+| **3374** | **agentic-email-processing-system (blue)** |
+| **3375** | **agentic-email-processing-system (green)** |
+| 3380+ | ai-microservice |
 
-Configure via `.env`: `PORT=3371`, `PORT_BLUE=3371`, `PORT_GREEN=3372`. The app listens on `PORT` (default 3371). Do not use ports outside the allowed range.
+Configure via `.env`: `PORT=3374`, `PORT_BLUE=3374`, `PORT_GREEN=3375`. The app listens on `PORT` (default 3374). Do not use ports outside the allowed range.
 
 ## Environment and services
 
@@ -55,8 +56,8 @@ All configuration is via `.env`; keys (no secret values) are in `.env.example`. 
 
 | Variable | Description | Example (Docker network) |
 | -------- | ----------- | ------------------------- |
-| `PORT` | Application port (33xx range) | `3371` |
-| `PORT_BLUE` / `PORT_GREEN` | Blue/green deployment ports | `3371` / `3372` |
+| `PORT` | Application port (33xx range) | `3374` |
+| `PORT_BLUE` / `PORT_GREEN` | Blue/green deployment ports | `3374` / `3375` |
 | `DOMAIN` | Service domain for nginx auto-registry | `agentic-email-processing-system.alfares.cz` |
 | `SERVICE_NAME` | Logging and auth registration | `agentic-email-processing-system` |
 | `NGINX_NETWORK_NAME` | Docker network for blue/green | `nginx-network` |

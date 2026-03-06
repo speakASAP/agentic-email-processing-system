@@ -12,7 +12,7 @@ const logger = require('./utils/logger');
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
-const PORT = process.env.PORT || 3371;
+const PORT = process.env.PORT || 3374;
 
 // --- Ingest (proxies to ai-microservice) ---
 app.post('/api/ingest', async (req, res) => {

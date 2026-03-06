@@ -266,7 +266,7 @@ Phase 3 (act + escalate, sync) ──► Sync D (end-to-end flow, observability 
 
 **Sync B:** Classifier and extractor contracts and confidence thresholds agreed (and implemented where “contract” implies API shape). No Phase 2 until Sync B. Status: [docs/contracts/SYNC_B_VALIDATION.md](contracts/SYNC_B_VALIDATION.md).
 
-**Phase 1 implemented:** Ingest and Classifier agents live in **ai-microservice** (`POST /api/email-triage/ingest`, `POST /api/email-triage/classify`). agentic-email-processing-system exposes `POST /api/ingest` and `POST /api/classify` and proxies to ai-microservice; events emitted to `LOGGING_SERVICE_URL`. Phase 1 verification: [docs/PHASE1_VERIFICATION.md](PHASE1_VERIFICATION.md). Extractor contract: [docs/contracts/extractor-contract.md](contracts/extractor-contract.md).
+**Phase 1 implemented:** Ingest and Classifier agents live in **ai-microservice** (`POST /api/email-triage/ingest`, `POST /api/email-triage/classify`). agentic-email-processing-system exposes `POST /api/ingest` and `POST /api/classify` and proxies to ai-microservice; events emitted to `LOGGING_SERVICE_URL`. Phase 1 verification: [docs/PHASE1_VERIFICATION.md](PHASE1_VERIFICATION.md). Extractor contract: [docs/contracts/extractor-contract.md](contracts/extractor-contract.md). **Phase 1 executed** (2026-03-06): app run and endpoints verified; re-run 2026-03-06 (health OK; E2E requires ai-microservice with `/api/email-triage` public per shared/auth.py). See PHASE1_VERIFICATION.md § Phase 1 execution.
 
 ---
 
