@@ -24,15 +24,17 @@ We use the **existing [ai-microservice](../ai-microservice/)** (see [ai-microser
 - **Service creation:** Follows [CREATE_SERVICE.md](../CREATE_SERVICE.md) (env discipline, logging, no hardcoded values, shared microservices).
 - **AI microservice:** [ai-microservice/README.md](../ai-microservice/README.md) — existing agents and integration; we extend with email-triage agents.
 
-## Phase 1 (Ingest + Classifier)
+## Phase 1+2 (Ingest, Classify, Extract, Decide)
 
-All AI agents (ingest, classifier, and future extractor, action/decider, escalation) **live in [ai-microservice](../ai-microservice/)**. This app calls them via `AI_SERVICE_URL`.
+All AI agents **live in [ai-microservice](../ai-microservice/)**. This app calls them via `AI_SERVICE_URL` and emits events to `LOGGING_SERVICE_URL`.
 
-- **POST /api/ingest** — Proxies to ai-microservice `POST /api/email-triage/ingest`. Validates and normalizes payload per [docs/contracts/email-schema.md](docs/contracts/email-schema.md). Returns 400 with `escalation_reason` if invalid.
-- **POST /api/classify** — Proxies to ai-microservice `POST /api/email-triage/classify`. Returns intent and confidence per [docs/contracts/intent-taxonomy.md](docs/contracts/intent-taxonomy.md). Body: `{ "payload": <normalized email> }` or raw email fields.
-- Events emitted to `LOGGING_SERVICE_URL` per [docs/contracts/event-schema.md](docs/contracts/event-schema.md).
+- **POST /api/ingest** — Proxies to `POST /api/email-triage/ingest`. Validates and normalizes per [email-schema](docs/contracts/email-schema.md). Returns 400 with `escalation_reason` if invalid.
+- **POST /api/classify** — Proxies to `POST /api/email-triage/classify`. Intent and confidence per [intent-taxonomy](docs/contracts/intent-taxonomy.md). Body: `{ "payload": <normalized email> }` or raw fields.
+- **POST /api/extract** — Proxies to `POST /api/email-triage/extract`. Entities per [extractor-contract](docs/contracts/extractor-contract.md). Body: `{ "payload": <normalized email>, "intent"?: <string> }`.
+- **POST /api/decide** — Proxies to `POST /api/email-triage/decide`. Action per [action-set](docs/contracts/action-set.md) and [routing-rules](docs/contracts/routing-rules.md). Body: `{ "intent", "confidence", "entities"?, "message_id"?, "tenant_id"? }`.
+- Events emitted per [event-schema](docs/contracts/event-schema.md).
 
-**Required:** Set `AI_SERVICE_URL` in `.env`. Run: `npm install && npm start`. Sync B: [docs/contracts/SYNC_B_VALIDATION.md](docs/contracts/SYNC_B_VALIDATION.md).
+**Required:** Set `AI_SERVICE_URL` in `.env`. Run: `npm install && npm start`. Sync B: [SYNC_B_VALIDATION](docs/contracts/SYNC_B_VALIDATION.md). Sync C: [SYNC_C_VALIDATION](docs/contracts/SYNC_C_VALIDATION.md) (after Phase 2).
 
 ## Port and port range
 

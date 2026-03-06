@@ -124,10 +124,109 @@ app.post('/api/classify', async (req, res) => {
   }
 });
 
+// --- Extractor (proxies to ai-microservice) ---
+app.post('/api/extract', async (req, res) => {
+  const ts = new Date().toISOString();
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const payload = body.payload || body;
+  const message_id = payload && payload.message_id != null ? String(payload.message_id) : 'unknown';
+  const tenant_id = payload && payload.tenant_id != null ? String(payload.tenant_id) : '';
+
+  try {
+    const result = await aiClient.extract(body);
+
+    await logger.emitEvent({
+      message_id: result.message_id || message_id,
+      timestamp: ts,
+      agent: 'extractor',
+      decision: 'extracted',
+      confidence: null,
+      escalation_reason: null,
+      tenant_id,
+      details: result.summary ? { summary: result.summary } : undefined
+    });
+
+    return res.status(200).json({
+      success: true,
+      message_id: result.message_id,
+      entities: result.entities,
+      summary: result.summary
+    });
+  } catch (err) {
+    logger.error('Extractor error (ai-microservice)', { error: err.message });
+    await logger.emitEvent({
+      message_id,
+      timestamp: ts,
+      agent: 'extractor',
+      decision: 'error',
+      confidence: null,
+      escalation_reason: err.status === 400 ? (err.body && err.body.escalation_reason) || 'incomplete_data' : null,
+      tenant_id,
+      details: { error: err.message }
+    });
+    const status = err.status === 400 ? 400 : 503;
+    return res.status(status).json({
+      success: false,
+      error: err.status === 400 ? (err.body && err.body.error) || err.message : 'AI service unavailable'
+    });
+  }
+});
+
+// --- Action/Decider (proxies to ai-microservice) ---
+app.post('/api/decide', async (req, res) => {
+  const ts = new Date().toISOString();
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const message_id = body.message_id != null ? String(body.message_id) : 'unknown';
+  const tenant_id = body.tenant_id != null ? String(body.tenant_id) : '';
+
+  try {
+    const result = await aiClient.decide(body);
+
+    await logger.emitEvent({
+      message_id,
+      timestamp: ts,
+      agent: 'action_decider',
+      decision: result.action,
+      confidence: null,
+      escalation_reason: result.escalation_reason || null,
+      tenant_id,
+      action: result.action,
+      details: result.queue ? { queue: result.queue } : undefined
+    });
+
+    return res.status(200).json({
+      success: true,
+      action: result.action,
+      escalation_reason: result.escalation_reason,
+      queue: result.queue
+    });
+  } catch (err) {
+    logger.error('Decider error (ai-microservice)', { error: err.message });
+    const escalationReason = err.status === 400 && err.body && err.body.escalation_reason
+      ? err.body.escalation_reason
+      : null;
+    await logger.emitEvent({
+      message_id,
+      timestamp: ts,
+      agent: 'action_decider',
+      decision: 'error',
+      confidence: null,
+      escalation_reason: escalationReason,
+      tenant_id,
+      details: { error: err.message }
+    });
+    const status = err.status === 400 ? 400 : 503;
+    return res.status(status).json({
+      success: false,
+      error: err.status === 400 ? (err.body && err.body.error) || err.message : 'AI service unavailable'
+    });
+  }
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: process.env.SERVICE_NAME || 'agentic-email-processing-system' });
 });
 
 app.listen(PORT, () => {
-  logger.info(`Phase 1 listening on port ${PORT} (email-triage agents via AI_SERVICE_URL)`);
+  logger.info(`Phase 1+2 listening on port ${PORT} (email-triage agents via AI_SERVICE_URL)`);
 });

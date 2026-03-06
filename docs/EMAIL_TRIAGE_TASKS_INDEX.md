@@ -277,7 +277,9 @@ Phase 3 (act + escalate, sync) ──► Sync D (end-to-end flow, observability 
 | 2.1 Extractor Agent | YES (with 2.2) | Sync B | Extractor endpoint, entities/structured data per contract |
 | 2.2 Action/Decider Agent | YES | Sync B | Action selector endpoint, action per action-set and routing-rules |
 
-**Sync C:** Action/escalation rules and logging schema validated (implementation matches contracts). No Phase 3 until Sync C.
+**Phase 2 implemented:** Extractor and Action/Decider in ai-microservice (`POST /api/email-triage/extract`, `POST /api/email-triage/decide`). agentic-email-processing-system exposes `POST /api/extract` and `POST /api/decide`; events emitted per event-schema.
+
+**Sync C:** Action/escalation rules and logging schema validated (implementation matches contracts). Status: [docs/contracts/SYNC_C_VALIDATION.md](contracts/SYNC_C_VALIDATION.md). No Phase 3 until Sync C.
 
 ---
 

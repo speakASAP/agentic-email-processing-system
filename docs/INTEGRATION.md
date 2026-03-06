@@ -10,7 +10,7 @@ We use the **existing [ai-microservice](../../ai-microservice/)** — see [ai-mi
 - **NLP Service**, ASR, Document AI, Prototype Generator, Template Repository, Free AI, AI Workers, Gemini AI, Data Viz
 - Shared database and centralized logging
 
-**Email-triage agents are implemented in ai-microservice** (orchestrator routes `/api/email-triage/ingest`, `/api/email-triage/classify`). This application calls them via `AI_SERVICE_URL` and emits audit events to `LOGGING_SERVICE_URL`. Future agents (extractor, action/decider, escalation) will be added to ai-microservice and used from here the same way.
+**Email-triage agents are implemented in ai-microservice**: `/api/email-triage/ingest`, `/api/email-triage/classify`, `/api/email-triage/extract`, `/api/email-triage/decide`. This application proxies them via `AI_SERVICE_URL` and emits audit events to `LOGGING_SERVICE_URL`. Escalation agent (Phase 3) will be added to ai-microservice when needed.
 
 ## Shared microservices
 
@@ -23,7 +23,7 @@ Do not modify production-ready services (`database-server`, `auth-microservice`,
 
 ## API and contracts
 
-API and event contracts are defined in Phase 0 (see [docs/agents/master-prompt.md](agents/master-prompt.md) and [docs/EMAIL_TRIAGE_TASKS_INDEX.md](EMAIL_TRIAGE_TASKS_INDEX.md)). **Sync A status:** [docs/contracts/SYNC_A_VALIDATION.md](contracts/SYNC_A_VALIDATION.md). **Sync B status:** [docs/contracts/SYNC_B_VALIDATION.md](contracts/SYNC_B_VALIDATION.md). Contract docs:
+API and event contracts are defined in Phase 0. **Sync A:** [SYNC_A_VALIDATION](contracts/SYNC_A_VALIDATION.md). **Sync B:** [SYNC_B_VALIDATION](contracts/SYNC_B_VALIDATION.md). **Sync C:** [SYNC_C_VALIDATION](contracts/SYNC_C_VALIDATION.md). Contract docs:
 
 - Email ingestion schema: [docs/contracts/email-schema.md](contracts/email-schema.md)
 - Event/logging schema: [docs/contracts/event-schema.md](contracts/event-schema.md)
@@ -35,4 +35,4 @@ API and event contracts are defined in Phase 0 (see [docs/agents/master-prompt.m
 
 ## Environment and ports
 
-All configuration via `.env`; see `.env.example` for required keys (values only in local `.env`, never committed). This service uses the **33xx shared microservice port range**: default `PORT=3371`, `PORT_GREEN=3372` for blue/green. See [README.md](../README.md#port-and-port-range) for the full port table and service URLs.
+All configuration via `.env`; see `.env.example` for required keys (values only in local `.env`, never committed). This service uses the **33xx shared microservice port range**: `PORT=3374`, `PORT_GREEN=3375`. See [README.md](../README.md#port-and-port-range) for the full port table and service URLs.
