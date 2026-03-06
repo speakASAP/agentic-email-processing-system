@@ -37,6 +37,17 @@ All AI agents **live in [ai-microservice](../ai-microservice/)**. This app calls
 
 **Required:** Set `AI_SERVICE_URL` in `.env`. Run: `npm install && npm start`. Sync B: [SYNC_B_VALIDATION](docs/contracts/SYNC_B_VALIDATION.md). Sync C: [SYNC_C_VALIDATION](docs/contracts/SYNC_C_VALIDATION.md). Sync D: [SYNC_D_VALIDATION](docs/contracts/SYNC_D_VALIDATION.md). Observability: [OBSERVABILITY_CHECKLIST](docs/OBSERVABILITY_CHECKLIST.md).
 
+## Demo (50-email dataset)
+
+A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails and shows per-email workflow state.
+
+- **Start:** `npm install && npm start` (ensure `AI_SERVICE_URL` and `LOGGING_SERVICE_URL` are set in `.env`).
+- **Open:** [http://localhost:3374/demo/](http://localhost:3374/demo/) (or your configured `PORT`).
+- **List view:** All 50 emails with subject, preview, status (pending / running / completed / failed), final category and action. Filter by status or category.
+- **Detail view:** Click an email to see a **stepper** (Ingest → Classify → Extract → Decide) with status and key inputs/outputs per stage; use **Run triage** to process that email.
+- **Run all:** Use **Run all 50 emails** to process the full dataset (one email at a time in the background). The list and detail views update via short polling (~1.5 s).
+- **Dataset:** Single source of truth is `docs/sample_intent_dataset.json` (read-only; not modified by the app). To reset demo state, restart the service.
+
 ## Port and port range
 
 Ports use the **33xx shared microservice range**, aligned with root [README.md](../README.md) (3371–3373 = auth-microservice; 3380+ = ai-microservice). This service uses **3374 (blue)** and **3375 (green)** to avoid conflict:
@@ -76,4 +87,16 @@ Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are
 
 ## Deployment
 
-Configuration and deployment follow the common approach: `.env` as single source of truth, integration with shared microservices (auth, database, logging, etc.), blue/green pattern via nginx-microservice where applicable. API routes are registered from `nginx/nginx-api-routes.conf` (picked up by nginx-microservice deploy-smart.sh).
+Configuration and deployment follow the common approach (see [CREATE_SERVICE.md](../CREATE_SERVICE.md)): `.env` as single source of truth, integration with shared microservices, blue/green via nginx-microservice. API routes are in `nginx/nginx-api-routes.conf` (picked up by deploy-smart.sh).
+
+### Production (Docker + blue/green)
+
+- **Build:** `docker compose build` or `docker build -t agentic-email-processing-system .`
+- **Run locally (single container):** `docker compose up -d` (requires `nginx-network` and `.env`).
+- **Deploy to production:** From the server (e.g. after `git pull` in this repo), run:
+  ```bash
+  ./scripts/deploy.sh
+  ```
+  This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image from `docker-compose.green.yml`, runs health checks, and switches traffic. No manual nginx edits on prod.
+
+**First-time setup on the server:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo.

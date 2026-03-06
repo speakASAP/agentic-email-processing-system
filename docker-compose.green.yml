@@ -1,0 +1,49 @@
+# Agentic Email Processing System — green slot (port 3375)
+# Used by nginx-microservice deploy-smart.sh for blue/green deployment.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentic-email-processing-system-green
+    ports:
+      - "${PORT_GREEN:-3375}:${PORT_GREEN:-3375}"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT_GREEN:-3375}
+      - DOMAIN=${DOMAIN:-}
+      - SERVICE_NAME=${SERVICE_NAME:-agentic-email-processing-system}
+      - NGINX_NETWORK_NAME=${NGINX_NETWORK_NAME:-nginx-network}
+      - LOGGING_SERVICE_URL=${LOGGING_SERVICE_URL:-http://logging-microservice:3367}
+      - LOGGING_SERVICE_API_PATH=${LOGGING_SERVICE_API_PATH:-/api/logs}
+      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL:-}
+      - AI_SERVICE_URL=${AI_SERVICE_URL:-http://ai-microservice:3380}
+      - NOTIFICATION_SERVICE_URL=${NOTIFICATION_SERVICE_URL:-}
+      - DB_HOST=${DB_HOST:-}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - DB_NAME=${DB_NAME:-}
+      - CLASSIFIER_CONFIDENCE_THRESHOLD=${CLASSIFIER_CONFIDENCE_THRESHOLD:-0.75}
+      - AUTO_RESPOND_ENABLED=${AUTO_RESPOND_ENABLED:-false}
+    networks:
+      - nginx-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${PORT_GREEN:-3375}/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 2
+
+networks:
+  nginx-network:
+    external: true

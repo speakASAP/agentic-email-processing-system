@@ -1,0 +1,27 @@
+# Dependencies (reinstalled in image)
+node_modules
+npm-debug.log*
+
+# Environment and secrets (injected at runtime via env_file)
+.env
+.env.*
+!.env.example
+
+# Git and IDE
+.git
+.gitignore
+.cursor
+*.md
+!docs/*.json
+
+# Tests and tooling (not needed in production image)
+tests
+*.test.js
+.eslintrc*
+.prettierrc*
+
+# Local and temp
+*.log
+tmp
+temp
+.DS_Store
