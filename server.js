@@ -367,6 +367,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: process.env.SERVICE_NAME || 'agentic-email-processing-system' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Phase 1+3 listening on port ${PORT} (email-triage agents via AI_SERVICE_URL)`);
 });
