@@ -48,6 +48,17 @@ A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails an
 - **Run all:** Use **Run all 50 emails** to process the full dataset (one email at a time in the background). The list and detail views update via short polling (~1.5 s).
 - **Dataset:** Single source of truth is `docs/sample_intent_dataset.json` (read-only; not modified by the app). To reset demo state, restart the service.
 
+### Frontend URLs (correct paths)
+
+| Context | URL | Purpose |
+| --------| -----| -----|
+| Local | `http://localhost:3374/demo` or `http://localhost:3374/demo/` | Demo app (list + detail) |
+| Local | `http://localhost:3374/demo/styles.css`, `/demo/app.js` | Static assets |
+| Local | `http://localhost:3374/health` | Health check |
+| Production | `https://agentic-email-processing-system.alfares.cz/demo` or `.../demo/` | Demo app (same behaviour) |
+| Production (alias) | `https://aeps.alfares.cz/demo` or `https://aeps.alfares.cz/` | Same demo app via short subdomain |
+| API | `GET /api/demo/emails`, `GET /api/demo/emails/:id`, `POST /api/demo/emails/:id/run`, `POST /api/demo/run-all` | Demo backend |
+
 ## Port and port range
 
 Ports use the **33xx shared microservice range**, aligned with root [README.md](../README.md) (3371–3373 = auth-microservice; 3380+ = ai-microservice). This service uses **3374 (blue)** and **3375 (green)** to avoid conflict:
@@ -93,13 +104,12 @@ Configuration and deployment follow the common approach (see [CREATE_SERVICE.md]
 
 - **Build:** `docker compose build` or `docker build -t agentic-email-processing-system .`
 - **Run locally (single container):** `docker compose up -d` (requires `nginx-network` and `.env`).
-- **Deploy to production (alfares.cz):** On the production server, from this repo (e.g. after `git pull`), run:
+- **Deploy to production (alfares.cz):** On the **production server** (e.g. `ssh statex`), from this repo after `git pull`, run:
 
   ```bash
   ./scripts/deploy.sh
-
   ```
 
-  This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image from `docker-compose.green.yml`, runs health checks, and switches traffic. No manual nginx edits on prod.
+  This calls `nginx-microservice/scripts/blue-green/deploy-smart.sh agentic-email-processing-system`, which builds the image, runs health checks, and switches traffic. The same script registers the alias subdomain **aeps.alfares.cz** (copies `nginx/aeps.alfares.cz.alias.conf` to nginx-microservice and reloads nginx), so the frontend is also available at **https://aeps.alfares.cz/demo/**. No manual nginx edits on prod. Deploy must be run where shared services (`LOGGING_SERVICE_URL`, `AI_SERVICE_URL`) are reachable on the same Docker network.
 
-**First-time setup on production:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo.
+**First-time setup on production:** Ensure the service is registered in nginx-microservice (e.g. run `./scripts/add-service-registry.sh agentic-email-processing-system` from the nginx-microservice directory and set domain, production path, container name base `agentic-email-processing-system`, container port `3374`, health endpoint `/health`). Then run `./scripts/deploy.sh` from this repo. For **aeps.alfares.cz** HTTPS, the deploy script creates a symlink `certificates/aeps.alfares.cz` → `alfares.cz` when a wildcard cert exists; otherwise ensure a certificate for `aeps.alfares.cz` is present in nginx-microservice's `certificates/` (e.g. via certbot or wildcard).

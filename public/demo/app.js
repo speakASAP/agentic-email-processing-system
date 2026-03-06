@@ -124,7 +124,25 @@ function renderDetail(rec) {
   }).join('');
 
   const decide = s.decide || {};
-  const category = (s.classify && s.classify.intent) ? s.classify.intent : null;
+  const classify = s.classify || {};
+  const category = classify.intent ? classify.intent : null;
+  const confidence = classify.confidence != null ? classify.confidence : null;
+  // Explanation trail: one-line summary of how the final decision was reached (master-prompt: "clear explanation trail")
+  let explanationLine = '';
+  if (decide.status === 'success') {
+    if (decide.escalation_reason) {
+      explanationLine = `Escalated: ${escapeHtml(decide.escalation_reason)}${decide.queue ? ` → ${escapeHtml(decide.queue)}` : ''}.`;
+    } else if (decide.action && decide.queue) {
+      explanationLine = `Routed to ${escapeHtml(decide.queue)} (action: ${escapeHtml(decide.action)}).`;
+    } else if (decide.action) {
+      explanationLine = `Action: ${escapeHtml(decide.action)}.`;
+    }
+    if (confidence != null && category) {
+      explanationLine = (explanationLine ? explanationLine + ' ' : '') + `Category "${escapeHtml(category)}" (confidence ${Number(confidence).toFixed(2)}).`;
+    }
+  } else if (decide.status === 'failed' && decide.error) {
+    explanationLine = `Decision failed: ${escapeHtml(decide.error)}.`;
+  }
   content.innerHTML = `
     <div class="detail-email">
       <div class="subject">${escapeHtml(rec.email && rec.email.subject || '(no subject)')}</div>
@@ -133,6 +151,7 @@ function renderDetail(rec) {
     </div>
     <div class="stages">${stageHtml}</div>
     <div class="final">
+      ${explanationLine ? `<div class="explanation">${explanationLine}</div>` : ''}
       ${category ? `<div class="category">Category: ${escapeHtml(category)}</div>` : ''}
       ${decide.action ? `<div class="action">Action: ${escapeHtml(decide.action)}</div>` : ''}
       ${decide.escalation_reason ? `<div class="escalation">Escalation: ${escapeHtml(decide.escalation_reason)}</div>` : ''}

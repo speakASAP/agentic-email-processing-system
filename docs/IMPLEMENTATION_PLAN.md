@@ -89,3 +89,12 @@ Goal: Align demo implementation with the ecosystem’s blue/green deployment and
 3. ✅ Frontend UI list + detail + short polling (Section 3).
 4. ✅ README demo instructions (Section 4).
 5. ✅ Nginx and deployment review (Section 5); containerization as needed.
+
+## 7. Documentation and Alignment (master-prompt-development.md further)
+
+Goal: Align implementation with design docs and success criteria; keep documentation current.
+
+- ✅ Update FIVE_APPROACHES_DEUTSCHE_TELEKOM.md
+  - ✅ Section 3 "Reliability and Observability": added "Implementation (current prototype)" describing logging schema, central logging integration via `utils/logger.js`, and that runbooks are ops responsibility.
+- ✅ Explanation trail in frontend
+  - ✅ Detail view shows a one-line "explanation" summary (why escalated, routed where, action, category + confidence) so stakeholders see how the final decision was reached without reloading.

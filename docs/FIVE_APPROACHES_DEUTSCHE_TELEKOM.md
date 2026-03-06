@@ -42,6 +42,8 @@ This document expands the five design approaches for the Agentic Email Processin
 
 **Documentation deliverables:** Logging schema (message_id, timestamp, agent, decision, confidence, escalation_reason), integration with central logging service, and runbooks for operations.
 
+**Implementation (current prototype):** The agentic-email-processing-system sends every agent outcome to the central logging microservice via `utils/logger.js` and `LOGGING_SERVICE_URL`. Each event includes `message_id`, `timestamp`, `agent`, `decision`, `confidence`, `escalation_reason`, plus optional `intent`, `action`, `tenant_id`, and `details`. Ingest (accepted/rejected), classifier (intent + confidence), extractor (entities), and action/decider (action, queue, escalation_reason) are all logged; errors and 400 responses with escalation reasons are logged with full context. Runbooks for operations remain outside this repo (ops responsibility).
+
 ---
 
 ## 4. Handling Ambiguity and Incomplete Data
