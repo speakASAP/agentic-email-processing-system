@@ -32,31 +32,13 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     NODE_ENV="${NODE_ENV:-}"
 fi
 
-# Deploy only code from repository: sync with remote (discard local changes on server)
-# Only sync if NODE_ENV is set to "production"
-if [ -d ".git" ]; then
-    if [ "$NODE_ENV" = "production" ]; then
-        echo -e "${BLUE}Production environment detected (NODE_ENV=production)${NC}"
-        echo -e "${BLUE}Syncing with remote repository (discarding local changes)...${NC}"
-        git fetch origin
-        BRANCH=$(git rev-parse --abbrev-ref HEAD)
-        git reset --hard "origin/$BRANCH"
-        echo -e "${GREEN}✓ Repository synced to origin/$BRANCH${NC}"
-        echo ""
-    else
-        echo -e "${YELLOW}Development environment detected (NODE_ENV=${NODE_ENV:-not set})${NC}"
-        echo -e "${YELLOW}Skipping git sync - local changes will be preserved${NC}"
-        echo ""
-    fi
-fi
-
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║        Agentic Email Processing System - Production Deployment                 ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
 # Service name for nginx-microservice deploy-smart.sh (must match registry)
-SERVICE_NAME="agentic-email-processing-system"
+SERVICE_NAME="${SERVICE_NAME:-agentic-email-processing-system}"
 DISPLAY_NAME="Agentic Email Processing System"
 
 # Ports used by this service (blue=3374, green=3375) — free them before deploy to avoid "port already allocated"
