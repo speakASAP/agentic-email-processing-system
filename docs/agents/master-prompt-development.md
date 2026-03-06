@@ -46,7 +46,7 @@ Before writing any code, you MUST carefully read and internalize at least:
 - `README.md` (project overview and goals).
 - `docs/agents/master-prompt.md` (design-stage orchestrator prompt — the system architecture and workflow are defined here).
 - `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` (design pillars and reasoning for Deutsche Telekom – you must keep this aligned when your implementation decisions affect them).
-- `ai-microservice/README.md` (existing AI services, endpoints, ports, patterns; how to extend with email-triage–specific agents).
+- `ai-microservice/README.md` (existing AI services, endpoints, ports, patterns; how to extend with email-triage–specific agents; this is where AI agents live).
 - `CREATE_SERVICE.md` (or equivalent path given in the docs) — environment, logging, shared microservices, deployment, blue/green, nginx-network.
 - Any **implementation plan markdown file** (e.g. in `docs/` or root) that outlines current phases, tasks, and checklists.
 - `docs/INTEGRATION.md` and `docs/EMAIL_TRIAGE_TASKS_INDEX.md` (when present) for integration tasks and design-phase task index.
@@ -65,6 +65,9 @@ You MUST also obey the following **project rules and user constraints**:
   - Add any **new variable names** (keys only, no values) to `.env.example`.
   - Never add secrets to `.env.example`.
   - Replace hardcoded URLs, keys, and constants in code with environment variables (`process.env.*` or equivalent).
+- **AI agents implementation:**
+  - All AI agent logic and modifications must be implemented in the corresponding agents inside the separate `ai-microservice` repository, following its patterns and contracts.
+  - The `agentic-email-processing-system` service must only orchestrate those agents via HTTP and present their results; it must not re-implement, fork, or embed AI agents locally.
 - **Logging:**
   - Use the **central logging system**:
     - `LOGGING_SERVICE_URL=http://logging-microservice:3367`
@@ -166,10 +169,10 @@ Your implementation must deliver:
        - If escalated, the **escalation reason** and the **target queue/team**.
    - UI should be **clear, modern, and focused on transparency**:
      - It should be easy for a business stakeholder to understand **what happened** and **why** for any email.
-     - Progress and status whould be visible in real time. So frontend will be constantly updated showing every stage in realtime so stakeholder 
+     - Progress and status must be visible in **real time**: the frontend must be continuously updated so that every stage transition is reflected on screen while processing happens, allowing stakeholders to literally watch work progress.
 
 3. **Demo dataset integration**:
-   - Normalize the provided 50-email dataset (similar to the sample you saw: support, sales, contract, technical, billing, spam/irrelevant, out-of-office, etc.) into a **structured internal format** that matches the **email ingestion contract**.
+   - Normalize, if needed, the provided dataset in `docs/sample_intent_dataset.json` (which already contains categorized customer emails such as support, sales, contract, technical, billing, spam/irrelevant, out-of-office, etc.) into a **structured internal format** that matches the **email ingestion contract**, and use it as the single source of truth for the 50-email demo.
    - Ensure the dataset is:
      - **Reproducible** (checked into the repo in a suitable format, e.g. JSON or fixtures).
      - Easy to process end-to-end with a **single action** (e.g. “Run dataset” button in the UI or CLI).
@@ -179,11 +182,11 @@ Your implementation must deliver:
    - Provide necessary:
      - Service configuration.
      - `.env` keys (values only in `.env`, keys in `.env.example`).
-     - Any **nginx route config fragments** required by `nginx-microservice` (e.g. `nginx-api-routes.conf`–style files) following `CREATE_SERVICE.md`.
+     - Any **nginx route config fragments** required by `nginx-microservice` are in nginx/nginx-api-routes.conf (e.g. `nginx-api-routes.conf`–style files) following `CREATE_SERVICE.md`.
    - Ensure the app can be:
      - Built.
-     - Run in a container (if the repo uses containers).
-     - Deployed via the **existing blue/green deployment scripts** (similar to other services).
+     - Run in a container.
+     - Deployed via the **existing blue/green deployment scripts** scripts/deploy.sh(similar to other services).
    - Document **exact commands** to:
      - Run locally (dev).
      - Run the demo dataset through the system.
@@ -269,6 +272,7 @@ You must **not** contradict these artifacts. If you discover inconsistencies or 
       - Show any warning or error if the stage failed.
     - Show final **category and action**, plus any escalation info.
 - The UI must be **clear and non-technical enough** that stakeholders can see how the agents behave and why a decision was made.
+ - Ensure the frontend receives status updates in **near real time** (e.g. via short polling, server-sent events, or websockets) so that the visual flow animates as each stage completes, without requiring manual page refresh.
 
 #### 6.4 Integration, Logging, and Observability
 
@@ -327,6 +331,7 @@ Your work is considered successful when:
      - Its status.
      - Key input/output data.
      - Final category and action.
+   - The email detail view updates in **real time** as stages progress, so stakeholders can watch work unfold without reloading the page.
 3. **Integration with ai-microservice and logging is correct**:
    - Calls to `ai-microservice` follow its contracts.
    - All critical events and decisions are logged to `LOGGING_SERVICE_URL` with sufficient context.
