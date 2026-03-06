@@ -65,19 +65,27 @@ PORT_GREEN="${PORT_GREEN:-3375}"
 
 # Stop and remove any container currently binding our ports so deploy-smart.sh can start green
 free_our_ports() {
-    local id name count=0
+    local id name rest count=0
+    echo -e "${BLUE}Checking for containers using port ${PORT_BLUE}/${PORT_GREEN}...${NC}"
+    local docker_out
+    if command -v timeout >/dev/null 2>&1; then
+        docker_out=$(timeout 15 docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' 2>/dev/null) || docker_out=""
+    else
+        docker_out=$(docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' 2>/dev/null) || docker_out=""
+    fi
     while read -r id name rest; do
         [ -z "$id" ] && continue
         echo -e "${YELLOW}Stopping container using port ${PORT_BLUE}/${PORT_GREEN}: $name${NC}"
         docker stop "$id" 2>/dev/null || true
         docker rm -f "$id" 2>/dev/null || true
         count=$((count + 1))
-    done < <(docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' 2>/dev/null | grep -E ":(${PORT_BLUE}|${PORT_GREEN})->" || true)
+    done < <(echo "$docker_out" | grep -E ":(${PORT_BLUE}|${PORT_GREEN})->" || true)
     [ "$count" -gt 0 ] && echo -e "${GREEN}✓ Ports ${PORT_BLUE}/${PORT_GREEN} freed${NC}" && sleep 1
 }
 
 free_our_ports
 
+echo -e "${BLUE}Locating nginx-microservice...${NC}"
 # Detect nginx-microservice path (production: alfares.cz server)
 NGINX_MICROSERVICE_PATH=""
 if [ -d "/home/alfares/nginx-microservice" ]; then
