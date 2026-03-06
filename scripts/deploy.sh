@@ -1,11 +1,15 @@
 #!/bin/bash
-# Agentic Email Processing System — Production Deployment Script
+# Agentic Email Processing System — Deployment Script
 # Usage: ./scripts/deploy.sh
 #
 # Deploys the agentic-email-processing-system to production using the
 # nginx-microservice blue/green deployment system.
 #
-# Detects nginx-microservice location and calls deploy-smart.sh to perform deployment.
+# Uses: nginx-microservice/scripts/blue-green/deploy-smart.sh
+# SSL: Let's Encrypt (managed by nginx-microservice). Set CERTBOT_EMAIL in nginx-microservice/.env.
+#
+# The script automatically detects the nginx-microservice location and
+# calls the deploy-smart.sh script to perform the deployment.
 
 set -e
 
@@ -22,7 +26,7 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Load NODE_ENV from .env file to determine environment
+# Load .env to determine environment
 NODE_ENV=""
 if [ -f "$PROJECT_ROOT/.env" ]; then
     set -a
@@ -32,46 +36,21 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     NODE_ENV="${NODE_ENV:-}"
 fi
 
-echo -e "${BLUE}╔════════════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║        Agentic Email Processing System - Production Deployment                 ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║         Agentic Email Processing System — Production Deployment              ║${NC}"
+echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Service name for nginx-microservice deploy-smart.sh (must match registry)
-SERVICE_NAME="${SERVICE_NAME:-agentic-email-processing-system}"
-DISPLAY_NAME="Agentic Email Processing System"
+SERVICE_NAME="agentic-email-processing-system"
 
-# Ports used by this service (blue=3374, green=3375) — free them before deploy to avoid "port already allocated"
-PORT_BLUE="${PORT_BLUE:-3374}"
-PORT_GREEN="${PORT_GREEN:-3375}"
-
-# Stop and remove any container currently binding our ports so deploy-smart.sh can start green
-free_our_ports() {
-    local id name rest count=0
-    echo -e "${BLUE}Checking for containers using port ${PORT_BLUE}/${PORT_GREEN}...${NC}"
-    local docker_out
-    if command -v timeout >/dev/null 2>&1; then
-        docker_out=$(timeout 15 docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' 2>/dev/null) || docker_out=""
-    else
-        docker_out=$(docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' 2>/dev/null) || docker_out=""
-    fi
-    while read -r id name rest; do
-        [ -z "$id" ] && continue
-        echo -e "${YELLOW}Stopping container using port ${PORT_BLUE}/${PORT_GREEN}: $name${NC}"
-        docker stop "$id" 2>/dev/null || true
-        docker rm -f "$id" 2>/dev/null || true
-        count=$((count + 1))
-    done < <(echo "$docker_out" | grep -E ":(${PORT_BLUE}|${PORT_GREEN})->" || true)
-    [ "$count" -gt 0 ] && echo -e "${GREEN}✓ Ports ${PORT_BLUE}/${PORT_GREEN} freed${NC}" && sleep 1
-}
-
-free_our_ports
-
-echo -e "${BLUE}Locating nginx-microservice...${NC}"
-# Detect nginx-microservice path (production: alfares.cz server)
+# Detect nginx-microservice path
 NGINX_MICROSERVICE_PATH=""
-if [ -d "/home/alfares/nginx-microservice" ]; then
+if [ -d "/home/statex/nginx-microservice" ]; then
+    NGINX_MICROSERVICE_PATH="/home/statex/nginx-microservice"
+elif [ -d "/home/alfares/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="/home/alfares/nginx-microservice"
+elif [ -d "/home/belunga/nginx-microservice" ]; then
+    NGINX_MICROSERVICE_PATH="/home/belunga/nginx-microservice"
 elif [ -d "$HOME/nginx-microservice" ]; then
     NGINX_MICROSERVICE_PATH="$HOME/nginx-microservice"
 elif [ -d "$(dirname "$PROJECT_ROOT")/nginx-microservice" ]; then
@@ -83,12 +62,14 @@ fi
 if [ -z "$NGINX_MICROSERVICE_PATH" ] || [ ! -d "$NGINX_MICROSERVICE_PATH" ]; then
     echo -e "${RED}❌ Error: nginx-microservice not found${NC}"
     echo ""
-    echo "Ensure nginx-microservice is in one of:"
-    echo "  - /home/alfares/nginx-microservice (production)"
+    echo "Please ensure nginx-microservice is installed in one of these locations:"
+    echo "  - /home/statex/nginx-microservice"
+    echo "  - /home/alfares/nginx-microservice"
     echo "  - $HOME/nginx-microservice"
-    echo "  - $(dirname "$PROJECT_ROOT")/nginx-microservice"
+    echo "  - $(dirname "$PROJECT_ROOT")/nginx-microservice (sibling directory)"
     echo ""
-    echo "Or set: export NGINX_MICROSERVICE_PATH=/path/to/nginx-microservice"
+    echo "Or set NGINX_MICROSERVICE_PATH environment variable:"
+    echo "  export NGINX_MICROSERVICE_PATH=/path/to/nginx-microservice"
     exit 1
 fi
 
@@ -97,48 +78,76 @@ if [ ! -f "$DEPLOY_SCRIPT" ]; then
     echo -e "${RED}❌ Error: deploy-smart.sh not found at $DEPLOY_SCRIPT${NC}"
     exit 1
 fi
-[ ! -x "$DEPLOY_SCRIPT" ] && chmod +x "$DEPLOY_SCRIPT"
+
+if [ ! -x "$DEPLOY_SCRIPT" ]; then
+    echo -e "${YELLOW}⚠️  Making deploy-smart.sh executable...${NC}"
+    chmod +x "$DEPLOY_SCRIPT"
+fi
 
 echo -e "${GREEN}✅ Found nginx-microservice at: $NGINX_MICROSERVICE_PATH${NC}"
 echo -e "${GREEN}✅ Deploying service: $SERVICE_NAME${NC}"
 echo ""
 
-# Phase timing (optional)
-PHASE_TIMING_FILE=$(mktemp /tmp/deploy-phases-XXXXXX)
-trap "rm -f $PHASE_TIMING_FILE" EXIT
+# Ports used by blue/green (must match docker-compose.blue.yml / docker-compose.green.yml)
+PORT_BLUE="${PORT_BLUE:-3374}"
+PORT_GREEN="${PORT_GREEN:-3375}"
 
-get_timestamp_seconds() { date +%s.%N; }
-START_TIME=$(get_timestamp_seconds)
+# Free ports if occupied by our own containers (e.g. after a failed deploy or leftover containers)
+if command -v docker >/dev/null 2>&1; then
+    for c in agentic-email-processing-system-blue agentic-email-processing-system-green; do
+        if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${c}$"; then
+            echo -e "${YELLOW}Stopping and removing existing container: $c (to free port)${NC}"
+            docker stop "$c" 2>/dev/null || true
+            docker rm "$c" 2>/dev/null || true
+        fi
+    done
+fi
 
-log_with_timestamp() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+# Check if required port is still in use by something else
+check_port() {
+    local port=$1
+    if command -v ss >/dev/null 2>&1; then
+        ss -tlnp 2>/dev/null | grep -q ":${port}[[:space:]]" && return 0
+    fi
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -i ":${port}" -sTCP:LISTEN -t >/dev/null 2>&1 && return 0
+    fi
+    return 1
 }
+if check_port "$PORT_BLUE"; then
+    echo -e "${RED}❌ Error: port $PORT_BLUE is still in use. Stop the process using it and retry.${NC}"
+    echo "  Example: ss -tlnp | grep $PORT_BLUE   or   lsof -i :$PORT_BLUE"
+    exit 1
+fi
 
-log_with_timestamp "Starting blue/green deployment..."
-log_with_timestamp "Executing: $DEPLOY_SCRIPT $SERVICE_NAME"
+# Change to nginx-microservice directory and run deployment
+echo -e "${YELLOW}Starting blue/green deployment...${NC}"
+echo ""
+
 cd "$NGINX_MICROSERVICE_PATH"
 
 if "$DEPLOY_SCRIPT" "$SERVICE_NAME"; then
-    END_TIME=$(get_timestamp_seconds)
-    TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
     echo ""
-    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║ ✅ Agentic Email Processing System deployment completed successfully! ║${NC}"
-    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo -e "${GREEN}Total time: ${TOTAL_DURATION}s${NC}"
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║   ✅ Agentic Email Processing System deployment completed successfully!      ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo "Check status: cd $NGINX_MICROSERVICE_PATH && ./scripts/status-all-services.sh"
+    echo "Service has been deployed using blue/green deployment."
+    echo "Check status with:"
+    echo "  cd $NGINX_MICROSERVICE_PATH"
+    echo "  ./scripts/status-all-services.sh"
     exit 0
 else
-    END_TIME=$(get_timestamp_seconds)
-    TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
     echo ""
-    echo -e "${RED}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║      ❌ Agentic Email Processing System deployment failed!           ║${NC}"
-    echo -e "${RED}╚══════════════════════════════════════════════════════════════════════╝${NC}"
-    echo -e "${RED}Total duratyion: ${TOTAL_DURATION}s)${NC}"
+    echo -e "${RED}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║            ❌ Agentic Email Processing System deployment failed!             ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo "Check: $NGINX_MICROSERVICE_PATH/service-registry/$SERVICE_NAME.json"
-    echo "Health: cd $NGINX_MICROSERVICE_PATH && ./scripts/blue-green/health-check.sh"
+    echo "Please check the error messages above and:"
+    echo "  1. If you see 'address already in use' for port $PORT_BLUE: run ./scripts/deploy.sh again (it stops existing containers first), or free the port: ss -tlnp | grep $PORT_BLUE"
+    echo "  2. Verify nginx-microservice is properly configured"
+    echo "  3. Check service registry: $NGINX_MICROSERVICE_PATH/service-registry/$SERVICE_NAME.json"
+    echo "  4. Review deployment logs (and container logs if health check fails)"
+    echo "  5. Check service health: cd $NGINX_MICROSERVICE_PATH && ./scripts/blue-green/health-check.sh $SERVICE_NAME"
     exit 1
 fi
