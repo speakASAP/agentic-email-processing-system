@@ -101,14 +101,17 @@ function fillCategoryFilter() {
 }
 
 function refreshList() {
-  listEmails()
+  return listEmails()
     .then(emails => {
       allEmails = emails;
       emails.forEach(e => { if (e.category) categories.add(e.category); });
       fillCategoryFilter();
       renderList();
     })
-    .catch(err => { $('email-list').innerHTML = `<li class="empty">Failed to load: ${escapeHtml(err.message)}</li>`; });
+    .catch(err => {
+      $('email-list').innerHTML = `<li class="empty">Failed to load: ${escapeHtml(err.message)}</li>`;
+      throw err;
+    });
 }
 
 function renderDetail(rec) {
@@ -190,15 +193,25 @@ function backToList() {
   selectedId = null;
   $('detail-section').setAttribute('hidden', '');
   $('list-section').removeAttribute('hidden');
-  refreshList();
+  refreshList().catch(() => {});
 }
 
 function startPolling() {
   if (pollTimer) return;
   $('poll-status').textContent = 'Polling…';
   pollTimer = setInterval(() => {
-    refreshList();
-    if (selectedId) loadDetail(selectedId);
+    refreshList()
+      .then(() => {
+        const anyRunning = allEmails.some(e => e.status === 'running');
+        if (!anyRunning) {
+          stopPolling();
+          return;
+        }
+        if (selectedId) {
+          return getEmail(selectedId).then(rec => { renderDetail(rec); });
+        }
+      })
+      .catch(() => { stopPolling(); });
   }, POLL_INTERVAL_MS);
 }
 
@@ -221,7 +234,7 @@ function onRunAll() {
 }
 
 function init() {
-  refreshList();
+  refreshList().catch(() => {});
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);
   if ($('run-all')) $('run-all').addEventListener('click', onRunAll);
