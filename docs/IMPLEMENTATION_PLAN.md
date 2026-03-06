@@ -49,7 +49,7 @@ Goal: Manage the fixed 50-email dataset and expose per-email workflow state for 
 Goal: Provide a clear, modern demo UI that allows stakeholders to inspect each email and see the full agentic workflow.
 
 - ✅ Choose and document frontend approach
-  - ✅ Minimal static frontend in `public/demo/` served at root `/`. Production: **https://aeps.alfares.cz** only.
+  - ✅ Minimal static frontend in `public/demo/` served at root `/`. Production: **<https://aeps.alfares.cz>** only.
   - ✅ Documented in this plan and in README Demo section.
 - ✅ Email list view
   - ✅ Page at `/` lists all emails with subject, preview, status, category, action.
@@ -70,7 +70,7 @@ Goal: Provide a clear, modern demo UI that allows stakeholders to inspect each e
 Goal: Make it easy to run the 50-email demo end-to-end and understand what to look for.
 
 - ✅ Document demo usage in `README.md`
-  - ✅ Demo section: start service, open `/` (local) or https://aeps.alfares.cz (prod), run one or all emails, interpret stages.
+  - ✅ Demo section: start service, open `/` (local) or <https://aeps.alfares.cz> (prod), run one or all emails, interpret stages.
 - ✅ Ensure demo is reproducible
   - ✅ `docs/sample_intent_dataset.json` is single source; backend does not mutate it.
   - ✅ Reset state by restarting the service (in-memory).
@@ -80,9 +80,7 @@ Goal: Make it easy to run the 50-email demo end-to-end and understand what to lo
 Goal: Align demo implementation with the ecosystem’s blue/green deployment and nginx-microservice patterns.
 
 - ✅ Validate nginx integration
-  - ✅ `nginx/nginx-api-routes.conf` has `/`, `/api/*`, `/health`. `nginx/aeps.alfares.cz.blue.conf` and `nginx/aeps.alfares.cz.green.conf` — one config per color (same blue/green approach as other microservices): redirect long domain to https://aeps.alfares.cz and proxy to the active container. Deploy script copies the one matching the main-domain symlink (codebase only).
-- ✅ Containerization and scripts
-  - ✅ Dockerfile + .dockerignore; docker-compose.yml, docker-compose.blue.yml, docker-compose.green.yml (ports 3374/3375, nginx-network).
+  - ✅ `nginx/nginx-api-routes.conf` has `/`, `/api/*`, `/health`. `nginx/aeps.alfares.cz.conf` — single vhost: redirect long domain to **<https://aeps.alfares.cz>** and serve frontend there (codebase only).
   - ✅ `scripts/deploy.sh` runs nginx-microservice deploy-smart.sh for blue/green; no changes to shared microservices.
 - ✅ Document deployment steps
   - ✅ README: deployment follows common approach; nginx routes from config; no manual nginx on prod.
