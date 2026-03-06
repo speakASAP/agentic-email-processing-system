@@ -95,6 +95,7 @@ All configuration is via `.env`; keys (no secret values) are in `.env.example`. 
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Shared PostgreSQL (optional) | `db-server-postgres`, `5432`, … |
 | `CLASSIFIER_CONFIDENCE_THRESHOLD` | Intent threshold (default 0.75) | `0.75` |
 | `AUTO_RESPOND_ENABLED` | Feature flag for auto-respond | `true` / `false` |
+| `LOG_DIR` | Local log directory (demo logs stored in 3 places: central service, in-memory, and this dir) | `logs` (default) |
 
 Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are set on the server; local `.env` uses Docker network hostnames and the ports above.
 
