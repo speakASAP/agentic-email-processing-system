@@ -63,7 +63,7 @@ When ingest or classify times out (e.g. "AI service unreachable … Connect Time
 - **Check ai-microservice logs** for the same time window as the failure:
   - **Ingest:** Look for "Email-triage ingest request received" and "Email-triage ingest success" (or "rejected") with `duration_ms`. If the request never appears, the problem is connectivity (ai-microservice down, network, or DNS). If it appears with a large `duration_ms`, the handler or event loop is blocked.
   - **Classify:** Look for "Email-triage classify request received" and "Email-triage classify success" with `duration_ms`. Same logic: no log → connectivity; high `duration_ms` → handler or event loop blocked.
-- **Client timeout:** agentic-email uses `lib/ai_client.js` with `TIMEOUT_MS = 15000` for calls to ai-microservice. Any proxy or load balancer between the two may have a shorter timeout (e.g. 10s); check nginx or deployment config if the error reports a 10s timeout.
+- **Client timeout:** agentic-email uses `lib/ai_client.js` with `TIMEOUT_MS = 15000` and undici `Agent({ connectTimeout: 15000 })` so the connect phase matches the total timeout. (Node fetch has a separate 10s default connect timeout; without the Agent, the second request often failed with "Connect Timeout Error … 10000ms" after the first email succeeded.)
 
 ## 7. Operations (Outside Repo)
 
