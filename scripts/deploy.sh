@@ -292,5 +292,6 @@ else
     echo "  3. Check service registry: $NGINX_MICROSERVICE_PATH/service-registry/$SERVICE_NAME.json"
     echo "  4. Review deployment logs (and container logs if health check fails)"
     echo "  5. Check service health: cd $NGINX_MICROSERVICE_PATH && ./scripts/blue-green/health-check.sh $SERVICE_NAME"
+    echo "  6. If nginx reload fails due to another service's config (e.g. minio-proxy-settings.conf), fix that in nginx-microservice or ensure all required include files exist."
     exit 1
 fi
