@@ -38,7 +38,7 @@ function appendDemoLogToFile(entry) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.appendFileSync(filePath, JSON.stringify(entry) + '\n', 'utf8');
   } catch (err) {
-    console.warn('[agentic-email-processing-system] Failed to write demo log to file:', err.message);
+    logger.error('Failed to write demo log to file', { error: err.message });
   }
 }
 
@@ -329,7 +329,7 @@ app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
   try {
     const response = await fetch(queryUrl, { signal: AbortSignal.timeout(10000) });
     if (!response.ok) {
-      logger.warn('Logs query failed', { status: response.status, message_id });
+      logger.error('Logs query failed', { status: response.status, message_id });
       const merged = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
       return res.json({ logs: merged, error: `Logging service returned ${response.status}` });
     }
@@ -400,8 +400,24 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
       }
       const ok = stage === 'ingest' ? (data && data.success) : true;
       if (ok) {
-        pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} success` });
-        logger.info('Demo run stage completed', { message_id, stage, finished_at: finishedAt });
+        const meta = { stage, finished_at: finishedAt, progress: `${stage} success` };
+        if (stage === 'classify' && data && (data.intent != null || data.raw_scores)) {
+          meta.intent = data.intent;
+          meta.confidence = data.confidence;
+          meta.raw_scores = data.raw_scores;
+        }
+        if (stage === 'extract' && data) {
+          const ent = data.entities;
+          if (ent && typeof ent === 'object') {
+            meta.product_refs_count = Array.isArray(ent.product_refs) ? ent.product_refs.length : 0;
+            meta.amounts_count = Array.isArray(ent.amounts) ? ent.amounts.length : 0;
+            meta.dates_count = Array.isArray(ent.dates) ? ent.dates.length : 0;
+            meta.contract_refs_count = Array.isArray(ent.contract_refs) ? ent.contract_refs.length : 0;
+          }
+          if (data.summary != null) meta.summary = data.summary;
+        }
+        pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, meta);
+        logger.info('Demo run stage completed', { message_id, stage, finished_at: finishedAt, ...(stage === 'classify' && data ? { intent: data.intent, confidence: data.confidence, raw_scores: data.raw_scores } : {}), ...(stage === 'extract' && data && data.entities ? { product_refs_count: (data.entities.product_refs || []).length, amounts_count: (data.entities.amounts || []).length, dates_count: (data.entities.dates || []).length, contract_refs_count: (data.entities.contract_refs || []).length, summary: data.summary } : {}) });
       } else {
         pushDemoLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
         logger.error('Demo run stage failed', { message_id, stage, error: (data && data.error) || 'unknown', finished_at: finishedAt });
@@ -470,7 +486,23 @@ app.post('/api/demo/run-all', async (req, res) => {
         }
         const ok = stage === 'ingest' ? (data && data.success) : true;
         if (ok) {
-          pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} success` });
+          const meta = { stage, finished_at: finishedAt, progress: `${stage} success` };
+          if (stage === 'classify' && data && (data.intent != null || data.raw_scores)) {
+            meta.intent = data.intent;
+            meta.confidence = data.confidence;
+            meta.raw_scores = data.raw_scores;
+          }
+          if (stage === 'extract' && data) {
+            const ent = data.entities;
+            if (ent && typeof ent === 'object') {
+              meta.product_refs_count = Array.isArray(ent.product_refs) ? ent.product_refs.length : 0;
+              meta.amounts_count = Array.isArray(ent.amounts) ? ent.amounts.length : 0;
+              meta.dates_count = Array.isArray(ent.dates) ? ent.dates.length : 0;
+              meta.contract_refs_count = Array.isArray(ent.contract_refs) ? ent.contract_refs.length : 0;
+            }
+            if (data.summary != null) meta.summary = data.summary;
+          }
+          pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, meta);
         } else {
           pushDemoLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
         }

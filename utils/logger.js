@@ -36,7 +36,7 @@ async function sendLog(level, message, metadata = {}) {
     if (isTimeout) {
       console.error(`[${SERVICE_NAME}] ERROR: Logging service request timeout (connectivity or slow) –`, err.message);
     } else {
-      console.warn(`[${SERVICE_NAME}] Logging service failed:`, err.message);
+      console.error(`[${SERVICE_NAME}] ERROR: Logging service failed:`, err.message);
     }
   }
 }

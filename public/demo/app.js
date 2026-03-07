@@ -147,8 +147,8 @@ function getStageResponse(st) {
   const status = d.status || 'pending';
   if (status !== 'success' && status !== 'failed') return null;
   if (st.key === 'ingest' && d.payload) return d.payload;
-  if (st.key === 'classify') return { intent: d.intent, confidence: d.confidence, raw_scores: d.raw_scores };
-  if (st.key === 'extract' && (d.entities || d.summary != null)) return { message_id: d.message_id, entities: d.entities, summary: d.summary };
+  if (st.key === 'classify') return { intent: d.intent, confidence: d.confidence, raw_scores: d.raw_scores != null && typeof d.raw_scores === 'object' ? d.raw_scores : {} };
+  if (st.key === 'extract') return { message_id: d.message_id, entities: d.entities != null ? d.entities : { product_refs: [], amounts: [], dates: [], contract_refs: [] }, summary: d.summary };
   if (st.key === 'decide') return { action: d.action, queue: d.queue, escalation_reason: d.escalation_reason };
   return null;
 }
@@ -181,6 +181,8 @@ function renderDetail(rec) {
         </div>
         <div class="stage-body${isExpanded ? '' : ' stage-body-collapsed'}" data-stage="${st.key}">
           ${d.error ? `<div class="error">${escapeHtml(d.error)}</div>` : ''}
+          ${st.key === 'classify' ? `<div class="stage-details"><div class="stage-label">Details</div><div class="classify-details">Intent: ${escapeHtml(String(d.intent != null ? d.intent : '—'))}, Confidence: ${d.confidence != null ? Number(d.confidence).toFixed(2) : '—'}${d.raw_scores && typeof d.raw_scores === 'object' && Object.keys(d.raw_scores).length ? '. Raw scores: ' + Object.entries(d.raw_scores).map(([k, v]) => k + '=' + Number(v).toFixed(2)).join(', ') : ''}</div></div>` : ''}
+          ${st.key === 'extract' && d.entities ? (function(e){ if (!e || typeof e !== 'object') return ''; const empty = (!e.product_refs || e.product_refs.length===0) && (!e.amounts || e.amounts.length===0) && (!e.dates || e.dates.length===0) && (!e.contract_refs || e.contract_refs.length===0); return empty ? '<div class="stage-extract-note">No product refs, amounts, dates or contract refs found (extractor looks for these patterns in the email).</div>' : ''; })(d.entities) : ''}
           <div class="stage-request"><div class="stage-label">Request</div><pre class="stage-pre"></pre></div>
           <div class="stage-response"><div class="stage-label">Response</div><pre class="stage-pre"></pre></div>
           <div class="stage-logs"><div class="stage-label">Logs</div><div class="stage-logs-content">—</div></div>
