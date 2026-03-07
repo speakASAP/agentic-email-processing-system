@@ -11,6 +11,7 @@ require('dotenv').config();
 
 const AEPS_URL = (process.env.AEPS_URL || 'http://localhost:3374').replace(/\/$/, '');
 const TIMEOUT_MS = 30000;
+const TRIAGE_TIMEOUT_MS = 60000;
 
 const INTENT_TAXONOMY = ['support', 'sales', 'contract', 'technical', 'billing', 'spam', 'unknown', 'multi_intent'];
 const ACTION_SET = ['auto_respond', 'route_to_queue', 'escalate'];
@@ -62,10 +63,10 @@ async function get(path) {
   return { status: res.status, json };
 }
 
-async function post(path, body) {
+async function post(path, body, timeoutMs = TIMEOUT_MS) {
   const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
   if (fetchOpts.dispatcher) opts.dispatcher = fetchOpts.dispatcher;
-  opts.signal = AbortSignal.timeout(TIMEOUT_MS);
+  opts.signal = AbortSignal.timeout(timeoutMs);
   const res = await fetchFn(AEPS_URL + path, opts);
   const text = await res.text();
   let json = {};
