@@ -37,15 +37,17 @@ function runOne(id) {
 }
 
 function clearResults(id) {
-  return fetch(`${API}/emails/${encodeURIComponent(id)}/clear`, { method: 'POST' }).then(r => {
-    if (!r.ok) throw new Error(r.statusText);
+  const url = `${API}/emails/${encodeURIComponent(id)}/clear`;
+  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } }).then(r => {
+    if (!r.ok) throw new Error(r.statusText || `HTTP ${r.status}`);
     return r.json();
   });
 }
 
 function clearAllResults() {
-  return fetch(`${API}/clear-all`, { method: 'POST' }).then(r => {
-    if (!r.ok) throw new Error(r.statusText);
+  const url = `${API}/clear-all`;
+  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } }).then(r => {
+    if (!r.ok) throw new Error(r.statusText || `HTTP ${r.status}`);
     return r.json();
   });
 }
@@ -537,8 +539,12 @@ function init() {
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);
   if ($('run-all')) $('run-all').addEventListener('click', onRunAll);
-  if ($('clear-all')) $('clear-all').addEventListener('click', onClearAllResults);
-  if ($('clear-results')) $('clear-results').addEventListener('click', onClearResults);
+  document.addEventListener('click', (e) => {
+    const el = e.target && (e.target.id ? e.target : e.target.closest('[id]'));
+    if (!el || !el.id) return;
+    if (el.id === 'clear-all') { e.preventDefault(); onClearAllResults(); }
+    else if (el.id === 'clear-results') { e.preventDefault(); onClearResults(); }
+  });
   if ($('see-logs')) $('see-logs').addEventListener('click', onSeeLogs);
   if ($('logs-modal-close')) $('logs-modal-close').addEventListener('click', closeLogsModal);
   const logsBackdrop = document.querySelector('#logs-modal .modal-backdrop');
