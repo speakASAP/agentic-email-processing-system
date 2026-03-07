@@ -19,6 +19,7 @@ COPY utils ./utils
 COPY public ./public
 COPY docs ./docs
 COPY nginx ./nginx
+COPY scripts ./scripts
 
 # Port 3374 (blue) / 3375 (green) set via env in docker-compose
 EXPOSE 3374
