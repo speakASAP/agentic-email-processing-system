@@ -60,7 +60,37 @@ async function main() {
 
   console.log('');
 
-  // 2. POST /api/email-triage/ingest (minimal payload)
+  // 2. GET /api/email-triage/ready (must respond in <1s)
+  const readyTimeout = 2000;
+  try {
+    const readyUrl = `${base}/api/email-triage/ready`;
+    console.log('2. GET', readyUrl, '(timeout', readyTimeout, 'ms)');
+    const tReady = Date.now();
+    const readyRes = await fetchFn(readyUrl, {
+      ...fetchOpts,
+      signal: AbortSignal.timeout(readyTimeout),
+    });
+    const readyElapsed = Date.now() - tReady;
+    const readyData = await readyRes.json().catch(() => ({}));
+    console.log('   Status:', readyRes.status, '| Elapsed:', readyElapsed, 'ms');
+    if (readyElapsed > 1000) {
+      console.log('   WARNING: ready took', readyElapsed, 'ms (target <1000 ms)');
+    }
+    if (readyRes.ok) {
+      console.log('   Response:', JSON.stringify(readyData));
+    } else {
+      console.log('   Body:', JSON.stringify(readyData));
+    }
+  } catch (err) {
+    const readyUrl = `${base}/api/email-triage/ready`;
+    console.log('2. GET', readyUrl, '- ERROR:', formatErr(err));
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log('');
+
+  // 3. POST /api/email-triage/ingest (minimal payload)
   const ingestPayload = {
     message_id: 'connectivity-check',
     tenant_id: 'diagnostic',
@@ -72,7 +102,7 @@ async function main() {
     attachments: [],
   };
   const ingestUrl = `${base}/api/email-triage/ingest`;
-  console.log('2. POST', ingestUrl);
+  console.log('3. POST', ingestUrl);
   const t1 = Date.now();
   try {
     const res = await fetchFn(ingestUrl, {
