@@ -693,4 +693,12 @@ app.get('/health', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Phase 1+3 listening on port ${PORT} (email-triage agents via AI_SERVICE_URL)`);
+  // Warm up connection to AI service so first demo/triage request does not hit cold connect (avoids 5s timeout)
+  setImmediate(() => {
+    if (aiClient.checkAiHealth) {
+      aiClient.checkAiHealth().then((status) => {
+        logger.info('AI connection warmup', { status });
+      }).catch(() => {});
+    }
+  });
 });
