@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test:endpoints": "node scripts/test-email-triage-endpoints.js",
+    "test:ai": "node scripts/check-ai-connectivity.js"
   },
   "engines": {
     "node": ">=18"

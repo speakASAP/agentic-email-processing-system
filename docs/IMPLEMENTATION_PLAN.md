@@ -103,6 +103,8 @@ Goal: Align implementation with design docs and success criteria; keep documenta
   - ✅ Detail view shows a one-line "explanation" summary (why escalated, routed where, action, category + confidence) so stakeholders see how the final decision was reached without reloading.
 - ✅ Observability checklist document
   - ✅ `docs/OBSERVABILITY_CHECKLIST.md` created; referenced by README, SYNC_D_VALIDATION, and EMAIL_TRIAGE_TASKS_INDEX. Covers central logging, event schema, pipeline steps, error/escalation logging, demo logs API.
+- ✅ Endpoint test script and documentation
+  - ✅ `scripts/test-email-triage-endpoints.js` tests Ingest → Classify → Extract → Decide and POST /api/triage; README Testing section and docs/INTEGRATION.md updated; AEPS_URL in .env.example.
 
 ---
 

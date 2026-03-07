@@ -113,6 +113,34 @@ Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are
 
 Example (local): `curl -s http://localhost:3374/health | jq .`
 
+## Testing
+
+Tests verify that the **AI LLM service is accessible** and that all **Ingest → Classify → Extract → Decide** endpoints (and full triage) respond correctly.
+
+### Endpoint tests (Ingest → Classify → Extract → Decide + triage)
+
+- **Script:** `scripts/test-email-triage-endpoints.js`
+- **Usage:** `npm run test:endpoints` or `node scripts/test-email-triage-endpoints.js`
+- The script:
+  1. **GET /health** — Checks AI and logging reachability from AEPS.
+  2. **POST /api/ingest** — Validates and normalizes email; checks `success`, `payload`.
+  3. **POST /api/classify** — Intent and confidence; checks taxonomy (support, sales, technical, etc.).
+  4. **POST /api/extract** — Entities; checks `entities` object.
+  5. **POST /api/decide** — Action; checks action set (auto_respond, route_to_queue, escalate).
+  6. **POST /api/triage** — Full pipeline; checks intent and action.
+- **Base URL:** Set `AEPS_URL` if the app is not on the default (e.g. `AEPS_URL=http://localhost:3375`).
+- **Exit:** 0 if all checks pass, 1 if any fail. All steps run even if one fails (full report).
+
+### AI service connectivity (direct)
+
+To verify the AI microservice itself (health, ready, ingest) without going through AEPS:
+
+- **Script:** `scripts/check-ai-connectivity.js`
+- **Usage:** `npm run test:ai` or `node scripts/check-ai-connectivity.js`
+- Uses `AI_SERVICE_URL` (e.g. `http://ai-microservice:3380` in Docker, `http://localhost:3380` on host).
+
+Ensure the service and `AI_SERVICE_URL` are running before running endpoint tests. Additional curl-based tests: `scripts/test-api-from-cli.sh`.
+
 ## Deployment
 
 Configuration and deployment follow the common approach (see [CREATE_SERVICE.md](../CREATE_SERVICE.md)): `.env` as single source of truth, integration with shared microservices, blue/green via nginx-microservice.
