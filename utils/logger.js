@@ -7,13 +7,23 @@ const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'agentic-email-processing-system';
 const API_PATH = process.env.LOGGING_SERVICE_API_PATH || '/api/logs';
 
+const STARTED_AT = Date.now();
+const LOGGING_GRACE_MS = 30000; // During startup grace, log to console only so deploy healthcheck isn't slowed by timeouts
+
 async function sendLog(level, message, metadata = {}) {
-  if (!LOGGING_SERVICE_URL) {
-    const ts = new Date().toISOString();
+  const ts = new Date().toISOString();
+  const toConsole = () => {
     console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
       `[${ts}] [${level}] [${SERVICE_NAME}] ${message}`,
       Object.keys(metadata).length ? metadata : ''
     );
+  };
+  if (!LOGGING_SERVICE_URL) {
+    toConsole();
+    return;
+  }
+  if (Date.now() - STARTED_AT < LOGGING_GRACE_MS) {
+    toConsole();
     return;
   }
   try {
