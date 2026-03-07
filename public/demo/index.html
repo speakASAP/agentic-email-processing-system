@@ -96,6 +96,16 @@
     .logs-meta{color:var(--muted);font-size:.75rem;margin-bottom:.2rem}
     .logs-msg{color:var(--text)}
     .logs-empty{color:var(--muted);font-style:italic}
+    .analysis-mode{margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:.75rem}
+    .analysis-mode-label{font-size:.85rem;color:var(--muted)}
+    .analysis-mode-group{display:flex;flex-wrap:wrap;align-items:center;gap:1rem}
+    .analysis-mode-item{display:flex;align-items:center;gap:.5rem}
+    .analysis-mode-item label{font-size:.85rem;color:var(--muted)}
+    .analysis-mode-select{padding:.4rem .65rem;font-size:.85rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
+    .analysis-mode-select:hover{border-color:var(--accent)}
+    .run-all-concurrency-label{font-size:.85rem;color:var(--muted);margin-right:.35rem}
+    .run-all-concurrency-input{width:3.5rem;padding:.4rem .5rem;font-size:.875rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);text-align:center}
+    .run-all-concurrency-input:focus{outline:none;border-color:var(--accent)}
   </style>
   <link rel="stylesheet" href="/styles.css">
 </head>
@@ -104,9 +114,30 @@
     <h1>Email Triage Demo</h1>
     <p class="subtitle">50 test emails · Ingest → Classify → Extract → Decide</p>
     <div class="actions">
+      <label for="run-all-concurrency" class="run-all-concurrency-label">Parallel:</label>
+      <input type="number" id="run-all-concurrency" class="run-all-concurrency-input" min="1" max="50" value="5" aria-label="Number of emails to analyze in parallel (1–50)">
       <button type="button" id="run-all" class="btn btn-primary">Run all 50 emails</button>
       <button type="button" id="edit-dataset" class="btn btn-secondary">Edit</button>
       <span id="poll-status" class="poll-status"></span>
+    </div>
+    <div class="analysis-mode" id="analysis-mode">
+      <span class="analysis-mode-label">Analysis mode (compare output):</span>
+      <span class="analysis-mode-group">
+        <span class="analysis-mode-item">
+          <label for="classify-mode">Classifier</label>
+          <select id="classify-mode" class="analysis-mode-select" aria-label="Classifier: AI or Rule-based">
+            <option value="rule">Rule-based</option>
+            <option value="ai">AI (LLM)</option>
+          </select>
+        </span>
+        <span class="analysis-mode-item">
+          <label for="decide-mode">Decider</label>
+          <select id="decide-mode" class="analysis-mode-select" aria-label="Decider: AI or Rule-based">
+            <option value="rule">Rule-based</option>
+            <option value="ai">AI (LLM)</option>
+          </select>
+        </span>
+      </span>
     </div>
   </header>
 

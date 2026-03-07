@@ -36,8 +36,13 @@ function runOne(id) {
   });
 }
 
-function runAll() {
-  return fetch(`${API}/run-all`, { method: 'POST' }).then(r => {
+function runAll(concurrency) {
+  const body = typeof concurrency === 'number' && concurrency >= 1 ? { concurrency } : {};
+  return fetch(`${API}/run-all`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(r => {
     if (!r.ok) throw new Error(r.statusText);
     return r.json();
   });
@@ -56,6 +61,18 @@ function updateEmail(id, payload) {
 
 function fetchDemoLogs(messageId) {
   return fetchJson(`${API}/emails/${encodeURIComponent(messageId)}/logs`).then(data => data.logs || []);
+}
+
+function getSettings() {
+  return fetchJson(`${API}/settings`);
+}
+
+function putSettings(useLlmClassifier, useLlmDecider) {
+  return fetch(`${API}/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ useLlmClassifier, useLlmDecider })
+  }).then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); });
 }
 
 function applyFilters() {
@@ -181,7 +198,8 @@ function renderDetail(rec) {
         </div>
         <div class="stage-body${isExpanded ? '' : ' stage-body-collapsed'}" data-stage="${st.key}">
           ${d.error ? `<div class="error">${escapeHtml(d.error)}</div>` : ''}
-          ${st.key === 'classify' ? `<div class="stage-details"><div class="stage-label">Details</div><div class="classify-details">Intent: ${escapeHtml(String(d.intent != null ? d.intent : '—'))}, Confidence: ${d.confidence != null ? Number(d.confidence).toFixed(2) : '—'}${d.raw_scores && typeof d.raw_scores === 'object' && Object.keys(d.raw_scores).length ? '. Raw scores: ' + Object.entries(d.raw_scores).map(([k, v]) => k + '=' + Number(v).toFixed(2)).join(', ') : ''}</div></div>` : ''}
+          ${st.key === 'classify' ? `<div class="stage-details"><div class="stage-label">Details</div><div class="classify-details">Intent: ${escapeHtml(String(d.intent != null ? d.intent : '—'))}, Confidence: ${d.confidence != null ? Number(d.confidence).toFixed(2) : '—'}${d.raw_scores && typeof d.raw_scores === 'object' && Object.keys(d.raw_scores).length ? '. Raw scores: ' + Object.entries(d.raw_scores).map(([k, v]) => k + '=' + Number(v).toFixed(2)).join(', ') : ''}</div>${d.model_used ? `<div class="stage-label">LLM model</div><div class="classify-details">${escapeHtml(d.model_used)}</div>` : ''}${d.llm_output ? `<div class="stage-label">LLM output</div><pre class="stage-pre">${escapeHtml(JSON.stringify(d.llm_output, null, 2))}</pre>` : ''}</div>` : ''}
+          ${st.key === 'decide' && (d.model_used || d.llm_output) ? `<div class="stage-details">${d.model_used ? `<div class="stage-label">LLM model</div><div class="classify-details">${escapeHtml(d.model_used)}</div>` : ''}${d.llm_output ? `<div class="stage-label">LLM output</div><pre class="stage-pre">${escapeHtml(JSON.stringify(d.llm_output, null, 2))}</pre>` : ''}</div>` : ''}
           ${st.key === 'extract' && d.entities ? (function(e){ if (!e || typeof e !== 'object') return ''; const empty = (!e.product_refs || e.product_refs.length===0) && (!e.amounts || e.amounts.length===0) && (!e.dates || e.dates.length===0) && (!e.contract_refs || e.contract_refs.length===0); return empty ? '<div class="stage-extract-note">No product refs, amounts, dates or contract refs found (extractor looks for these patterns in the email).</div>' : ''; })(d.entities) : ''}
           <div class="stage-request"><div class="stage-label">Request</div><pre class="stage-pre"></pre></div>
           <div class="stage-response"><div class="stage-label">Response</div><pre class="stage-pre"></pre></div>
@@ -350,8 +368,14 @@ function onRunOne() {
 
 function onRunAll() {
   const btn = $('run-all');
+  const input = $('run-all-concurrency');
+  let concurrency = 5;
+  if (input) {
+    const n = parseInt(input.value, 10);
+    if (!isNaN(n) && n >= 1 && n <= 50) concurrency = n;
+  }
   if (btn) btn.disabled = true;
-  runAll().then(() => { startPolling(); if (btn) btn.disabled = false; }).catch(err => { alert(err.message); if (btn) btn.disabled = false; });
+  runAll(concurrency).then(() => { startPolling(); if (btn) btn.disabled = false; }).catch(err => { alert(err.message); if (btn) btn.disabled = false; });
 }
 
 // --- Edit modal: select email then edit form ---
@@ -456,9 +480,25 @@ function onSeeLogs() {
   openLogsModal(selectedId);
 }
 
+function applyAnalysisModeUI(settings) {
+  const classifySel = $('classify-mode');
+  const decideSel = $('decide-mode');
+  if (classifySel) classifySel.value = settings.useLlmClassifier ? 'ai' : 'rule';
+  if (decideSel) decideSel.value = settings.useLlmDecider ? 'ai' : 'rule';
+}
+
+function onAnalysisModeChange() {
+  const useLlmClassifier = $('classify-mode') && $('classify-mode').value === 'ai';
+  const useLlmDecider = $('decide-mode') && $('decide-mode').value === 'ai';
+  putSettings(useLlmClassifier, useLlmDecider).then(applyAnalysisModeUI).catch(() => {});
+}
+
 function init() {
   // Ensure Edit modal is closed on load (only opens when user clicks Edit)
   closeEditModal();
+  getSettings().then(applyAnalysisModeUI).catch(() => {});
+  if ($('classify-mode')) $('classify-mode').addEventListener('change', onAnalysisModeChange);
+  if ($('decide-mode')) $('decide-mode').addEventListener('change', onAnalysisModeChange);
   refreshList().catch(() => {});
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);

@@ -17,7 +17,7 @@ We use the **existing [ai-microservice](../../ai-microservice/)** — see [ai-mi
 - **Logging:** `LOGGING_SERVICE_URL` — all agent decisions, classifications, and escalations must be sent to the central logging service.
 - **Auth:** `AUTH_SERVICE_URL` — use when the system exposes APIs or needs to validate callers.
 - **Database:** `DB_*` — use only if the system persists triage state or audit data.
-- **AI:** `AI_SERVICE_URL` — points to existing ai-microservice; we extend it with email-triage agents. Optional: `LLM_MODEL_CLASSIFIER`, `LLM_MODEL_EXTRACTOR` if supported.
+- **AI:** `AI_SERVICE_URL` — points to existing ai-microservice; we extend it with email-triage agents. Optional LLM (OpenRouter via free-ai-service): in **ai-microservice** set `EMAIL_TRIAGE_LLM_CLASSIFIER=true` and/or `EMAIL_TRIAGE_LLM_DECIDER=true` to use Agentic AI for classify/decide; when unset or on failure, rule-based agents are used.
 
 Do not modify production-ready services (`database-server`, `auth-microservice`, `nginx-microservice`, `logging-microservice`, core ai-microservice agents). Use only their published APIs and scripts; extend ai-microservice with new agents as documented in the master prompt.
 

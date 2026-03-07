@@ -294,6 +294,25 @@ app.post('/api/triage', async (req, res) => {
 });
 
 // --- Demo API: 50-email dataset and per-email workflow state ---
+// In-memory analysis mode: user can switch AI (LLM) vs rule-based for Classifier and Decider (compare output)
+let demoAnalysisMode = { useLlmClassifier: false, useLlmDecider: false };
+
+function getDemoSettings() {
+  return { useLlmClassifier: demoAnalysisMode.useLlmClassifier, useLlmDecider: demoAnalysisMode.useLlmDecider };
+}
+
+app.get('/api/demo/settings', (req, res) => {
+  res.json(getDemoSettings());
+});
+
+app.put('/api/demo/settings', (req, res) => {
+  const body = req.body || {};
+  if (typeof body.useLlmClassifier === 'boolean') demoAnalysisMode.useLlmClassifier = body.useLlmClassifier;
+  if (typeof body.useLlmDecider === 'boolean') demoAnalysisMode.useLlmDecider = body.useLlmDecider;
+  logger.info('Demo settings updated', getDemoSettings());
+  res.json(getDemoSettings());
+});
+
 app.get('/api/demo/emails', (req, res) => {
   demoDataset.ensureLoaded();
   const list = demoDataset.getList();
@@ -405,6 +424,12 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
           meta.intent = data.intent;
           meta.confidence = data.confidence;
           meta.raw_scores = data.raw_scores;
+          if (data.model_used != null) meta.model_used = data.model_used;
+          if (data.llm_output != null) meta.llm_output = data.llm_output;
+        }
+        if (stage === 'decide' && data) {
+          if (data.model_used != null) meta.model_used = data.model_used;
+          if (data.llm_output != null) meta.llm_output = data.llm_output;
         }
         if (stage === 'extract' && data) {
           const ent = data.entities;
@@ -426,7 +451,7 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
       if (!ok) demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
     };
     try {
-      const result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd });
+      const result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, getDemoSettings());
       const finishedAt = new Date().toISOString();
       if (result.success) {
         demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_COMPLETED);
@@ -450,87 +475,146 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
   });
 });
 
-// Run-all processes each email individually (max 30 items per AI request is respected per pipeline).
-app.post('/api/demo/run-all', async (req, res) => {
-  demoDataset.ensureLoaded();
-  const ids = demoDataset.getMessageIds();
-  res.status(202).json({ accepted: true, count: ids.length });
+// Run-all: parallel start with concurrency limit (DEMO_RUN_ALL_CONCURRENCY, default 5). All 50 attempted; timeout/connectivity retried once.
+const RUN_ALL_RETRY_DELAY_MS = 2000;
+const DEFAULT_RUN_ALL_CONCURRENCY = 5;
 
-  setImmediate(async () => {
-    for (const message_id of ids) {
-      const rec = demoDataset.get(message_id);
-      if (!rec) continue;
-      const startedAt = new Date().toISOString();
-      pushDemoLog(message_id, 'info', 'Demo run started', { started_at: startedAt, progress: 'started' });
-      logger.info('Demo run started', { message_id, started_at: startedAt });
+async function runOneEmail(message_id, rec) {
+  const startedAt = new Date().toISOString();
+  pushDemoLog(message_id, 'info', 'Demo run started', { started_at: startedAt, progress: 'started' });
+  logger.info('Demo run started', { message_id, started_at: startedAt });
 
-      demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
+  demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
+  for (const stage of demoDataset.STAGES) {
+    demoDataset.setStageResult(message_id, stage, 'pending', {});
+  }
+  demoDataset.setStageRunning(message_id, 'ingest');
+  const email = rec.email;
+  const onStageStart = (stage) => {
+    const ts = new Date().toISOString();
+    pushDemoLog(message_id, 'info', `Stage started: ${stage}`, { stage, started_at: ts, progress: stage });
+    logger.info('Demo run stage started', { message_id, stage, started_at: ts });
+    demoDataset.setStageRunning(message_id, stage);
+  };
+  const onStageEnd = (stage, err, data) => {
+    const finishedAt = new Date().toISOString();
+    if (err) {
+      pushDemoLog(message_id, 'error', `Stage failed: ${stage} — ${err.message}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: err.message });
+      demoDataset.setStageResult(message_id, stage, 'failed', { error: err.message });
+      demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+      return;
+    }
+    const ok = stage === 'ingest' ? (data && data.success) : true;
+    if (ok) {
+      const meta = { stage, finished_at: finishedAt, progress: `${stage} success` };
+      if (stage === 'classify' && data && (data.intent != null || data.raw_scores)) {
+        meta.intent = data.intent;
+        meta.confidence = data.confidence;
+        meta.raw_scores = data.raw_scores;
+        if (data.model_used != null) meta.model_used = data.model_used;
+        if (data.llm_output != null) meta.llm_output = data.llm_output;
+      }
+      if (stage === 'decide' && data) {
+        if (data.model_used != null) meta.model_used = data.model_used;
+        if (data.llm_output != null) meta.llm_output = data.llm_output;
+      }
+      if (stage === 'extract' && data) {
+        const ent = data.entities;
+        if (ent && typeof ent === 'object') {
+          meta.product_refs_count = Array.isArray(ent.product_refs) ? ent.product_refs.length : 0;
+          meta.amounts_count = Array.isArray(ent.amounts) ? ent.amounts.length : 0;
+          meta.dates_count = Array.isArray(ent.dates) ? ent.dates.length : 0;
+          meta.contract_refs_count = Array.isArray(ent.contract_refs) ? ent.contract_refs.length : 0;
+        }
+        if (data.summary != null) meta.summary = data.summary;
+      }
+      pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, meta);
+    } else {
+      pushDemoLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
+    }
+    demoDataset.setStageResult(message_id, stage, ok ? 'success' : 'failed', data);
+    if (!ok) demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+  };
+
+  let result;
+  let pipelineErr = null;
+  try {
+    result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, getDemoSettings());
+  } catch (err) {
+    pipelineErr = err;
+  }
+
+  if (pipelineErr) {
+    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(pipelineErr) : 'other';
+    const retryable = (reason === 'timeout' || reason === 'connectivity');
+    if (retryable) {
+      pushDemoLog(message_id, 'info', 'Retrying pipeline once after timeout/connectivity', { reason, delay_ms: RUN_ALL_RETRY_DELAY_MS });
+      logger.info('Demo run-all retrying once after timeout/connectivity', { message_id, reason });
+      await new Promise((r) => setTimeout(r, RUN_ALL_RETRY_DELAY_MS));
       for (const stage of demoDataset.STAGES) {
         demoDataset.setStageResult(message_id, stage, 'pending', {});
       }
       demoDataset.setStageRunning(message_id, 'ingest');
-      const email = rec.email;
-      const onStageStart = (stage) => {
-        const ts = new Date().toISOString();
-        pushDemoLog(message_id, 'info', `Stage started: ${stage}`, { stage, started_at: ts, progress: stage });
-        logger.info('Demo run stage started', { message_id, stage, started_at: ts });
-        demoDataset.setStageRunning(message_id, stage);
-      };
-      const onStageEnd = (stage, err, data) => {
-        const finishedAt = new Date().toISOString();
-        if (err) {
-          pushDemoLog(message_id, 'error', `Stage failed: ${stage} — ${err.message}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: err.message });
-          demoDataset.setStageResult(message_id, stage, 'failed', { error: err.message });
-          demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
-          return;
-        }
-        const ok = stage === 'ingest' ? (data && data.success) : true;
-        if (ok) {
-          const meta = { stage, finished_at: finishedAt, progress: `${stage} success` };
-          if (stage === 'classify' && data && (data.intent != null || data.raw_scores)) {
-            meta.intent = data.intent;
-            meta.confidence = data.confidence;
-            meta.raw_scores = data.raw_scores;
-          }
-          if (stage === 'extract' && data) {
-            const ent = data.entities;
-            if (ent && typeof ent === 'object') {
-              meta.product_refs_count = Array.isArray(ent.product_refs) ? ent.product_refs.length : 0;
-              meta.amounts_count = Array.isArray(ent.amounts) ? ent.amounts.length : 0;
-              meta.dates_count = Array.isArray(ent.dates) ? ent.dates.length : 0;
-              meta.contract_refs_count = Array.isArray(ent.contract_refs) ? ent.contract_refs.length : 0;
-            }
-            if (data.summary != null) meta.summary = data.summary;
-          }
-          pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, meta);
-        } else {
-          pushDemoLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
-        }
-        demoDataset.setStageResult(message_id, stage, ok ? 'success' : 'failed', data);
-        if (!ok) demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
-      };
+      pipelineErr = null;
       try {
-        const result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd });
-        const finishedAt = new Date().toISOString();
-        if (result.success) {
-          demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_COMPLETED);
-          pushDemoLog(message_id, 'info', 'Demo run completed successfully', { finished_at: finishedAt, progress: 'completed', success: true });
-        } else {
-          if (result.step) {
-            demoDataset.setStageResult(message_id, result.step, 'failed', { error: result.error });
-          }
-          demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
-          pushDemoLog(message_id, 'error', `Demo run failed: ${result.error || 'unknown'}`, { finished_at: finishedAt, progress: 'failed', success: false, step: result.step, error: result.error });
-        }
-      } catch (err) {
-        const finishedAt = new Date().toISOString();
-        const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
-        pushDemoLog(message_id, 'error', `Demo run error: ${err.message}`, { finished_at: finishedAt, progress: 'error', error: err.message });
-        logger.error(`Demo run-all item error: ${reason}`, { message_id, reason, error: err.message });
-        demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+        result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, getDemoSettings());
+      } catch (err2) {
+        pipelineErr = err2;
       }
     }
-    logger.info('Demo run-all completed', { count: ids.length });
+  }
+
+  if (pipelineErr) {
+    const finishedAt = new Date().toISOString();
+    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(pipelineErr) : 'other';
+    pushDemoLog(message_id, 'error', `Demo run error: ${pipelineErr.message}`, { finished_at: finishedAt, progress: 'error', error: pipelineErr.message });
+    logger.error(`Demo run-all item error: ${reason}`, { message_id, reason, error: pipelineErr.message });
+    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+    return;
+  }
+
+  const finishedAt = new Date().toISOString();
+  if (result.success) {
+    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_COMPLETED);
+    pushDemoLog(message_id, 'info', 'Demo run completed successfully', { finished_at: finishedAt, progress: 'completed', success: true });
+  } else {
+    if (result.step) {
+      demoDataset.setStageResult(message_id, result.step, 'failed', { error: result.error });
+    }
+    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+    pushDemoLog(message_id, 'error', `Demo run failed: ${result.error || 'unknown'}`, { finished_at: finishedAt, progress: 'failed', success: false, step: result.step, error: result.error });
+  }
+}
+
+app.post('/api/demo/run-all', async (req, res) => {
+  demoDataset.ensureLoaded();
+  const ids = demoDataset.getMessageIds();
+  const raw = req.body && (typeof req.body.concurrency === 'number' || typeof req.body.concurrency === 'string') ? req.body.concurrency : null;
+  const requested = raw != null ? parseInt(raw, 10) : null;
+  const defaultConcurrency = Math.max(1, parseInt(process.env.DEMO_RUN_ALL_CONCURRENCY || String(DEFAULT_RUN_ALL_CONCURRENCY), 10));
+  const concurrency = Math.min(ids.length, Math.max(1, (!isNaN(requested) && requested >= 1 ? requested : defaultConcurrency)));
+  res.status(202).json({ accepted: true, count: ids.length, concurrency });
+
+  setImmediate(async () => {
+    let nextIndex = 0;
+    async function worker() {
+      while (nextIndex < ids.length) {
+        const message_id = ids[nextIndex++];
+        const rec = demoDataset.get(message_id);
+        if (!rec) continue;
+        try {
+          await runOneEmail(message_id, rec);
+        } catch (outerErr) {
+          logger.error('Demo run-all iteration error (continuing queue)', { message_id, error: outerErr.message });
+          try {
+            pushDemoLog(message_id, 'error', `Demo run error: ${outerErr.message}`, { progress: 'error', error: outerErr.message });
+            demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+          } catch (_) { /* ignore */ }
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
+    logger.info('Demo run-all completed', { count: ids.length, concurrency });
   });
 });
 

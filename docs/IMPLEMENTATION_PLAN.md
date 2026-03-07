@@ -131,5 +131,6 @@ No mandatory implementation work remains for the master-prompt-development scope
 1. **Smoke test on prod:** After `git pull` on prod, run `./scripts/deploy.sh` and verify <https://aeps.alfares.cz> loads, then run one email and "Run all 50" to confirm end-to-end and polling.
 2. **Logging microservice:** Ensure `LOGGING_SERVICE_URL` is reachable from the app (local and prod) so "See logs…" returns data; if not, check network and env.
 3. **ai-microservice:** Ensure email-triage agents (ingest, classify, extract, decide) are deployed and `AI_SERVICE_URL` points to them; otherwise triage will fail with 503 or ingest/classify errors.
+4. **Optional — LLM Classifier and Decider:** In ai-microservice, set `EMAIL_TRIAGE_LLM_CLASSIFIER=true` and/or `EMAIL_TRIAGE_LLM_DECIDER=true` to run classify/decide via free-ai-service (OpenRouter). When unset or on LLM failure, rule-based agents are used. See [INTEGRATION.md](INTEGRATION.md) and ai-microservice README.
 
 If new requirements appear (e.g. persistence to DB, new intents, or different frontend), add them as new tasks in Section 2–7 and track with ✅ as they are completed.

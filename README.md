@@ -47,6 +47,7 @@ A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails an
 - **List view:** All 50 emails with subject, preview, status (pending / running / completed / failed), final category and action. Filter by status or category.
 - **Detail view:** Click an email to see a **stepper** (Ingest → Classify → Extract → Decide) with status and key inputs/outputs per stage; use **Run triage** to process that email. Use **See logs…** to view every log line related to that email (micro task) from the central logging service for debugging (e.g. when Ingest fails or shows “Ingest fetch failed”).
 - **Run all:** Use **Run all 50 emails** to process the full dataset (one email at a time in the background). The list and detail views update via short polling (~1.5 s). **Polling** shows “Polling…” only while at least one email is in progress; it stops automatically when no emails are running (completed or failed) or when a poll request fails (e.g. network error), so the status text is cleared.
+- **Analysis mode:** Use the **Classifier** and **Decider** dropdowns (AI (LLM) vs Rule-based) to choose how emails are analyzed. Run triage with one setting, then switch and run again to compare output. Settings apply to "Run triage" and "Run all 50 emails".
 - **Edit:** Use **Edit** (next to Run all 50 emails) to change any sample email for real-time testing: select an email from the list, edit subject, sender, and body, then Save. Edits are in-memory only; stages reset to pending so you can run triage on the updated content.
 - **Dataset:** Single source of truth is `docs/sample_intent_dataset.json` (read-only on disk; in-memory copies can be edited via the UI). To reset demo state, restart the service.
 
@@ -57,7 +58,7 @@ A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails an
 | **Production** | **<https://aeps.alfares.cz>** (frontend only; nothing else) |
 | Local | `http://localhost:3374/` |
 | Health | `http://localhost:3374/health` (local) or via backend |
-| API (backend) | `GET /api/demo/emails`, `GET /api/demo/emails/:id`, `GET /api/demo/emails/:id/logs` (See logs…), `PUT /api/demo/emails/:id` (edit), `POST /api/demo/emails/:id/run`, `POST /api/demo/run-all` |
+| API (backend) | `GET /api/demo/emails`, `GET /api/demo/emails/:id`, `GET /api/demo/emails/:id/logs` (See logs…), `PUT /api/demo/emails/:id` (edit), `POST /api/demo/emails/:id/run`, `POST /api/demo/run-all`, `GET /api/demo/settings`, `PUT /api/demo/settings` (analysis mode: AI vs rule-based) |
 
 **After deployment:** Run `./scripts/deploy.sh`; when the aeps.alfares.cz certificate is present (or symlinked from wildcard), **<https://aeps.alfares.cz>** is installed and available — it is the only frontend URL. The main domain `agentic-email-processing-system.alfares.cz` is served by the blue/green generated config (no duplicate `server_name`). No `/demo` or `/demo/` paths; the app is served at root `/`.
 
