@@ -497,6 +497,9 @@ app.post('/api/demo/run-all', async (req, res) => {
   });
 });
 
+// Avoid 404 for /favicon.ico (browsers request it by default)
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // Frontend at root: https://aeps.alfares.cz only (served at /)
 const demoDir = path.join(__dirname, 'public', 'demo');
 const sendDemoIndex = (req, res) => res.sendFile(path.join(demoDir, 'index.html'));
