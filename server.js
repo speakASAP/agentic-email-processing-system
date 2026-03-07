@@ -678,23 +678,7 @@ async function checkLoggingReachable() {
 }
 
 async function checkAiReachable() {
-  const url = process.env.AI_SERVICE_URL;
-  if (!url || !url.trim()) return 'not_configured';
-  const base = url.replace(/\/$/, '');
-  const healthUrl = `${base}/health`;
-  try {
-    const res = await fetch(healthUrl, { signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
-    return res.ok ? 'ok' : 'unreachable';
-  } catch (err) {
-    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
-    logger.error(`Health check: AI service unreachable (${reason})`, {
-      reason,
-      error: err.message,
-      duration_ms: HEALTH_CHECK_TIMEOUT_MS,
-      url: healthUrl
-    });
-    return 'unreachable';
-  }
+  return aiClient.checkAiHealth ? aiClient.checkAiHealth() : 'not_configured';
 }
 
 app.get('/health', async (req, res) => {
