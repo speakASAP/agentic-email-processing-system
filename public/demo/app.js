@@ -11,6 +11,9 @@ let selectedId = null;
 let pollTimer = null;
 let selectedStatus = '';
 let selectedCategory = '';
+let expandedStages = {};
+let cachedLogs = null;
+let cachedLogsMessageId = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -129,9 +132,35 @@ function refreshList() {
     });
 }
 
+function getStageRequest(rec, key) {
+  const s = rec.stages || {};
+  const email = rec.email || {};
+  if (key === 'ingest') return email.subject != null || email.sender != null ? { subject: email.subject, sender: email.sender, body_plain: email.body_plain, body_html: email.body_html } : null;
+  if (key === 'classify' && s.ingest && s.ingest.payload) return s.ingest.payload;
+  if (key === 'extract') return { payload: (s.ingest && s.ingest.payload) || null, intent: (s.classify && s.classify.intent) != null ? s.classify.intent : null };
+  if (key === 'decide') return { intent: (s.classify && s.classify.intent) != null ? s.classify.intent : null, confidence: (s.classify && s.classify.confidence) != null ? s.classify.confidence : null, entities: (s.extract && s.extract.entities) != null ? s.extract.entities : null };
+  return null;
+}
+
+function getStageResponse(st) {
+  const d = st.data || {};
+  const status = d.status || 'pending';
+  if (status !== 'success' && status !== 'failed') return null;
+  if (st.key === 'ingest' && d.payload) return d.payload;
+  if (st.key === 'classify') return { intent: d.intent, confidence: d.confidence, raw_scores: d.raw_scores };
+  if (st.key === 'extract' && (d.entities || d.summary != null)) return { message_id: d.message_id, entities: d.entities, summary: d.summary };
+  if (st.key === 'decide') return { action: d.action, queue: d.queue, escalation_reason: d.escalation_reason };
+  return null;
+}
+
 function renderDetail(rec) {
   const content = $('detail-content');
   if (!content) return;
+  const messageId = rec.email && rec.email.message_id ? String(rec.email.message_id) : selectedId || '';
+  if (messageId && cachedLogsMessageId !== messageId) {
+    cachedLogs = null;
+    cachedLogsMessageId = null;
+  }
   const s = rec.stages || {};
   const stages = [
     { key: 'ingest', title: 'Ingest', data: s.ingest },
@@ -143,18 +172,19 @@ function renderDetail(rec) {
   const stageHtml = stages.map(st => {
     const d = st.data || {};
     const status = d.status || 'pending';
-    let io = '';
-    if (status === 'success' || status === 'failed') {
-      if (st.key === 'ingest' && d.payload) io = JSON.stringify(d.payload, null, 2);
-      if (st.key === 'classify') io = [d.intent != null && `Intent: ${d.intent}`, d.confidence != null && `Confidence: ${d.confidence}`].filter(Boolean).join('\n');
-      if (st.key === 'extract' && d.entities) io = JSON.stringify(d.entities, null, 2);
-      if (st.key === 'decide') io = [d.action && `Action: ${d.action}`, d.queue && `Queue: ${d.queue}`, d.escalation_reason && `Escalation: ${d.escalation_reason}`].filter(Boolean).join('\n');
-    }
+    const isExpanded = !!expandedStages[st.key];
     return `
-      <div class="stage" data-stage="${st.key}">
-        <div class="name">${escapeHtml(st.title)} <span class="badge ${status}">${status}</span></div>
-        ${d.error ? `<div class="error">${escapeHtml(d.error)}</div>` : ''}
-        ${io ? `<div class="io"><pre>${escapeHtml(io)}</pre></div>` : ''}
+      <div class="stage stage-expandable" data-stage="${st.key}">
+        <div class="stage-header" role="button" tabindex="0" aria-expanded="${isExpanded}">
+          <span class="stage-chevron" aria-hidden="true">${isExpanded ? '▼' : '▶'}</span>
+          <div class="name">${escapeHtml(st.title)} <span class="badge ${status}">${status}</span></div>
+        </div>
+        <div class="stage-body${isExpanded ? '' : ' stage-body-collapsed'}" data-stage="${st.key}">
+          ${d.error ? `<div class="error">${escapeHtml(d.error)}</div>` : ''}
+          <div class="stage-request"><div class="stage-label">Request</div><pre class="stage-pre"></pre></div>
+          <div class="stage-response"><div class="stage-label">Response</div><pre class="stage-pre"></pre></div>
+          <div class="stage-logs"><div class="stage-label">Logs</div><div class="stage-logs-content">—</div></div>
+        </div>
       </div>`;
   }).join('');
 
@@ -162,7 +192,6 @@ function renderDetail(rec) {
   const classify = s.classify || {};
   const category = classify.intent ? classify.intent : null;
   const confidence = classify.confidence != null ? classify.confidence : null;
-  // Explanation trail: one-line summary of how the final decision was reached (master-prompt: "clear explanation trail")
   let explanationLine = '';
   if (decide.status === 'success') {
     if (decide.escalation_reason) {
@@ -191,10 +220,85 @@ function renderDetail(rec) {
       ${decide.action ? `<div class="action">Action: ${escapeHtml(decide.action)}</div>` : ''}
       ${decide.escalation_reason ? `<div class="escalation">Escalation: ${escapeHtml(decide.escalation_reason)}</div>` : ''}
     </div>`;
+
+  stages.forEach(st => {
+    const stageEl = content.querySelector(`.stage[data-stage="${st.key}"]`);
+    const headerEl = stageEl && stageEl.querySelector('.stage-header');
+    const bodyEl = stageEl && stageEl.querySelector('.stage-body');
+    if (!stageEl || !headerEl || !bodyEl) return;
+    if (expandedStages[st.key]) {
+      fillStageBody(rec, st, bodyEl, messageId);
+    }
+    headerEl.addEventListener('click', () => toggleStage(rec, st.key, messageId));
+    headerEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleStage(rec, st.key, messageId); } });
+  });
+}
+
+function fillStageBody(rec, st, bodyEl, messageId) {
+  const requestObj = getStageRequest(rec, st.key);
+  const responseObj = getStageResponse(st);
+  const reqPre = bodyEl.querySelector('.stage-request pre');
+  const resPre = bodyEl.querySelector('.stage-response pre');
+  const logsContent = bodyEl.querySelector('.stage-logs-content');
+  if (reqPre) reqPre.textContent = requestObj != null ? JSON.stringify(requestObj, null, 2) : '—';
+  if (resPre) resPre.textContent = responseObj != null ? JSON.stringify(responseObj, null, 2) : '—';
+  if (logsContent) {
+    if (cachedLogsMessageId === messageId && cachedLogs !== null) {
+      logsContent.innerHTML = cachedLogs.length ? cachedLogs.map((entry) => {
+        const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
+        const level = escapeHtml(entry.level || '');
+        const msg = escapeHtml(entry.message || '');
+        const meta = entry.metadata && Object.keys(entry.metadata).length ? escapeHtml(JSON.stringify(entry.metadata, null, 2)) : '';
+        return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
+      }).join('') : '<span class="logs-empty">No log lines for this email.</span>';
+    } else {
+      logsContent.textContent = 'Loading…';
+      fetchDemoLogs(messageId).then((logs) => {
+        cachedLogs = logs;
+        cachedLogsMessageId = messageId;
+        if (logsContent.textContent === 'Loading…') {
+          logsContent.innerHTML = logs.length ? logs.map((entry) => {
+            const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
+            const level = escapeHtml(entry.level || '');
+            const msg = escapeHtml(entry.message || '');
+            const meta = entry.metadata && Object.keys(entry.metadata).length ? escapeHtml(JSON.stringify(entry.metadata, null, 2)) : '';
+            return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
+          }).join('') : '<span class="logs-empty">No log lines for this email.</span>';
+        }
+      }).catch((err) => {
+        logsContent.innerHTML = `<span class="logs-empty">Failed to load logs: ${escapeHtml(err.message)}</span>`;
+      });
+    }
+  }
+}
+
+function toggleStage(rec, key, messageId) {
+  expandedStages[key] = !expandedStages[key];
+  const content = $('detail-content');
+  if (!content) return;
+  const stageEl = content.querySelector(`.stage[data-stage="${key}"]`);
+  const headerEl = stageEl && stageEl.querySelector('.stage-header');
+  const bodyEl = stageEl && stageEl.querySelector('.stage-body');
+  const chevron = stageEl && stageEl.querySelector('.stage-chevron');
+  const st = [{ key: 'ingest', title: 'Ingest', data: (rec.stages || {}).ingest }, { key: 'classify', title: 'Classify', data: (rec.stages || {}).classify }, { key: 'extract', title: 'Extract', data: (rec.stages || {}).extract }, { key: 'decide', title: 'Decide', data: (rec.stages || {}).decide }].find(x => x.key === key);
+  if (!stageEl || !headerEl || !bodyEl) return;
+  if (expandedStages[key]) {
+    bodyEl.classList.remove('stage-body-collapsed');
+    if (chevron) chevron.textContent = '▼';
+    headerEl.setAttribute('aria-expanded', 'true');
+    fillStageBody(rec, st, bodyEl, messageId);
+  } else {
+    bodyEl.classList.add('stage-body-collapsed');
+    if (chevron) chevron.textContent = '▶';
+    headerEl.setAttribute('aria-expanded', 'false');
+  }
 }
 
 function selectEmail(id) {
   selectedId = id;
+  expandedStages = {};
+  cachedLogs = null;
+  cachedLogsMessageId = null;
   $('list-section').setAttribute('hidden', '');
   $('detail-section').removeAttribute('hidden');
   loadDetail(id);

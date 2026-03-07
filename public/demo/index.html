@@ -50,6 +50,19 @@
     .stage .name .badge.running{background:var(--warn);color:#000}
     .stage .name .badge.success{background:var(--success);color:#000}
     .stage .name .badge.failed{background:var(--error);color:#fff}
+    .stage-expandable{border:1px solid var(--border);border-radius:6px;overflow:hidden}
+    .stage-expandable .stage-header{display:flex;align-items:center;gap:.5rem;padding:.75rem 1rem;cursor:pointer;background:var(--bg);border:none;width:100%;text-align:left;color:inherit;font:inherit}
+    .stage-expandable .stage-header:hover{background:var(--border)}
+    .stage-chevron{font-size:.7rem;color:var(--muted);flex-shrink:0}
+    .stage-expandable .stage-body{padding:0 1rem 1rem 1rem;border-top:1px solid var(--border);background:var(--bg)}
+    .stage-expandable .stage-body-collapsed{display:none}
+    .stage-expandable .stage-body .stage-label{font-size:.75rem;font-weight:600;color:var(--muted);margin: .75rem 0 .35rem 0}
+    .stage-expandable .stage-body .stage-label:first-of-type{margin-top:.5rem}
+    .stage-expandable .stage-pre{font-family:ui-monospace,monospace;font-size:.8rem;white-space:pre-wrap;word-break:break-word;margin:0;padding:.5rem;background:var(--surface);border:1px solid var(--border);border-radius:4px;max-height:200px;overflow-y:auto}
+    .stage-expandable .stage-logs-content{font-family:ui-monospace,monospace;font-size:.8rem;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.5rem}
+    .stage-expandable .stage-logs-content .logs-line{margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+    .stage-expandable .stage-logs-content .logs-line:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+    .stage-expandable .stage-logs-content .logs-meta{color:var(--muted);font-size:.75rem;margin-bottom:.15rem}
     .final{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
     .final .explanation{font-weight:500;margin-bottom:.5rem;color:var(--accent)}
     .final .category{font-weight:600}
