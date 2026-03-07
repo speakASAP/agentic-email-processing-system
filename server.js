@@ -687,6 +687,11 @@ async function checkAiReachable() {
   return aiClient.checkAiHealth ? aiClient.checkAiHealth() : 'not_configured';
 }
 
+// Minimal liveness for Docker healthcheck (no external calls); use this in docker-compose healthcheck so container becomes healthy quickly
+app.get('/live', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 app.get('/health', async (req, res) => {
   const [logging, ai] = await Promise.all([checkLoggingReachable(), checkAiReachable()]);
   res.json({
