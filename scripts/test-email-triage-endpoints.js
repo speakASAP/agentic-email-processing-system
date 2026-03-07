@@ -190,22 +190,23 @@ async function main() {
     }
   }
 
-  // 5. Full pipeline (POST /api/triage) — retry once on 503 (transient AI/network)
+  // 5. Full pipeline (POST /api/triage) — 60s timeout, up to 3 attempts on 503 or failure
   console.log('');
   console.log('5. POST /api/triage (full pipeline)');
+  const TRIAGE_ATTEMPTS = 3;
   let triageRes;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= TRIAGE_ATTEMPTS; attempt++) {
     try {
-      triageRes = await post('/api/triage', RAW_EMAIL);
+      triageRes = await post('/api/triage', RAW_EMAIL, TRIAGE_TIMEOUT_MS);
       if (triageRes.status === 200) break;
-      if (triageRes.status === 503 && attempt < 2) {
-        console.log('  NOTE Triage returned 503, retrying once...');
+      if ((triageRes.status === 503 || triageRes.status >= 500) && attempt < TRIAGE_ATTEMPTS) {
+        console.log('  NOTE Triage returned ' + triageRes.status + ', retrying (' + attempt + '/' + TRIAGE_ATTEMPTS + ')...');
         continue;
       }
       break;
     } catch (e) {
-      if (attempt < 2) {
-        console.log('  NOTE Triage request failed, retrying once...');
+      if (attempt < TRIAGE_ATTEMPTS) {
+        console.log('  NOTE Triage request failed, retrying (' + attempt + '/' + TRIAGE_ATTEMPTS + ')...');
         continue;
       }
       ok('Triage', false, e.message || 'request failed');
