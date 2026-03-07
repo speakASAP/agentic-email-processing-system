@@ -36,6 +36,20 @@ function runOne(id) {
   });
 }
 
+function clearResults(id) {
+  return fetch(`${API}/emails/${encodeURIComponent(id)}/clear`, { method: 'POST' }).then(r => {
+    if (!r.ok) throw new Error(r.statusText);
+    return r.json();
+  });
+}
+
+function clearAllResults() {
+  return fetch(`${API}/clear-all`, { method: 'POST' }).then(r => {
+    if (!r.ok) throw new Error(r.statusText);
+    return r.json();
+  });
+}
+
 function runAll(concurrency) {
   const body = typeof concurrency === 'number' && concurrency >= 1 ? { concurrency } : {};
   return fetch(`${API}/run-all`, {
@@ -227,6 +241,7 @@ function renderDetail(rec) {
   } else if (decide.status === 'failed' && decide.error) {
     explanationLine = `Decision failed: ${escapeHtml(decide.error)}.`;
   }
+  const isRoutedSuccess = decide.status === 'success' && !decide.escalation_reason && (decide.action === 'route_to_queue' || (decide.action && decide.queue));
   content.innerHTML = `
     <div class="detail-email">
       <div class="subject">${escapeHtml(rec.email && rec.email.subject || '(no subject)')}</div>
@@ -235,7 +250,7 @@ function renderDetail(rec) {
     </div>
     <div class="stages">${stageHtml}</div>
     <div class="final">
-      ${explanationLine ? `<div class="explanation">${explanationLine}</div>` : ''}
+      ${explanationLine ? `<div class="explanation${isRoutedSuccess ? ' explanation-success' : ''}">${explanationLine}</div>` : ''}
       ${category ? `<div class="category">Category: ${escapeHtml(category)}</div>` : ''}
       ${decide.action ? `<div class="action">Action: ${escapeHtml(decide.action)}</div>` : ''}
       ${decide.escalation_reason ? `<div class="escalation">Escalation: ${escapeHtml(decide.escalation_reason)}</div>` : ''}
@@ -364,6 +379,25 @@ function onRunOne() {
   const btn = $('run-one');
   if (btn) btn.disabled = true;
   runOne(selectedId).then(() => { startPolling(); if (btn) btn.disabled = false; }).catch(err => { alert(err.message); if (btn) btn.disabled = false; });
+}
+
+function onClearResults() {
+  if (!selectedId) return;
+  clearResults(selectedId).then(() => {
+    expandedStages = {};
+    cachedLogs = null;
+    cachedLogsMessageId = null;
+    loadDetail(selectedId);
+  }).catch(err => alert(err.message));
+}
+
+function onClearAllResults() {
+  clearAllResults().then(() => {
+    expandedStages = {};
+    cachedLogs = null;
+    cachedLogsMessageId = null;
+    refreshList().then(() => { if (selectedId) loadDetail(selectedId); });
+  }).catch(err => alert(err.message));
 }
 
 function onRunAll() {
@@ -503,6 +537,8 @@ function init() {
   if ($('back')) $('back').addEventListener('click', backToList);
   if ($('run-one')) $('run-one').addEventListener('click', onRunOne);
   if ($('run-all')) $('run-all').addEventListener('click', onRunAll);
+  if ($('clear-all')) $('clear-all').addEventListener('click', onClearAllResults);
+  if ($('clear-results')) $('clear-results').addEventListener('click', onClearResults);
   if ($('see-logs')) $('see-logs').addEventListener('click', onSeeLogs);
   if ($('logs-modal-close')) $('logs-modal-close').addEventListener('click', closeLogsModal);
   const logsBackdrop = document.querySelector('#logs-modal .modal-backdrop');

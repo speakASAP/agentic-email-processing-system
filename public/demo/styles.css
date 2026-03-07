@@ -171,6 +171,7 @@ body {
 
 .final { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .final .explanation { font-weight: 500; margin-bottom: 0.5rem; color: var(--accent); }
+.final .explanation.explanation-success { color: var(--success); }
 .final .category { font-weight: 600; }
 .final .action { margin-top: 0.25rem; }
 .final .escalation { color: var(--warn); margin-top: 0.25rem; }

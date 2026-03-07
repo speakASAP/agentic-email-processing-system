@@ -383,6 +383,32 @@ app.put('/api/demo/emails/:message_id', (req, res) => {
   res.json({ ok: true, message_id });
 });
 
+app.post('/api/demo/emails/:message_id/clear', (req, res) => {
+  demoDataset.ensureLoaded();
+  const message_id = req.params.message_id;
+  const rec = demoDataset.get(message_id);
+  if (!rec) return res.status(404).json({ error: 'Email not found' });
+  demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
+  for (const stage of demoDataset.STAGES) {
+    demoDataset.setStageResult(message_id, stage, 'pending', {});
+  }
+  logger.info('Demo results cleared', { message_id });
+  res.json({ ok: true, message_id });
+});
+
+app.post('/api/demo/clear-all', (req, res) => {
+  demoDataset.ensureLoaded();
+  const ids = demoDataset.getMessageIds();
+  for (const message_id of ids) {
+    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
+    for (const stage of demoDataset.STAGES) {
+      demoDataset.setStageResult(message_id, stage, 'pending', {});
+    }
+  }
+  logger.info('Demo results cleared for all emails', { count: ids.length });
+  res.json({ ok: true, count: ids.length });
+});
+
 app.post('/api/demo/emails/:message_id/run', async (req, res) => {
   demoDataset.ensureLoaded();
   const message_id = req.params.message_id;
