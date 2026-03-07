@@ -654,7 +654,8 @@ app.get('/', sendDemoIndex);
 app.use(express.static(demoDir));
 
 // Check reachability of LOGGING_SERVICE_URL (for "See logs…") and AI_SERVICE_URL (email-triage agents)
-const HEALTH_CHECK_TIMEOUT_MS = 3000;
+// Keep short so /health returns within deploy script's health-check timeout (5s)
+const HEALTH_CHECK_TIMEOUT_MS = 2000;
 
 async function checkLoggingReachable() {
   const url = process.env.LOGGING_SERVICE_URL;
@@ -667,12 +668,17 @@ async function checkLoggingReachable() {
     return res.ok ? 'ok' : 'unreachable';
   } catch (err) {
     const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
-    logger.error(`Health check: logging service unreachable (${reason})`, {
-      reason,
-      error: err.message,
-      duration_ms: HEALTH_CHECK_TIMEOUT_MS,
-      url: base
-    });
+    // Log to console only during health so we don't block on remote logger
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`[${process.env.SERVICE_NAME || 'agentic-email-processing-system'}] Health check: logging unreachable (${reason})`);
+    } else {
+      logger.error(`Health check: logging service unreachable (${reason})`, {
+        reason,
+        error: err.message,
+        duration_ms: HEALTH_CHECK_TIMEOUT_MS,
+        url: base
+      });
+    }
     return 'unreachable';
   }
 }
