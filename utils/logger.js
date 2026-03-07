@@ -32,7 +32,12 @@ async function sendLog(level, message, metadata = {}) {
     });
     if (!res.ok) throw new Error(`Logging service ${res.status}`);
   } catch (err) {
-    console.warn(`[${SERVICE_NAME}] Logging service failed:`, err.message);
+    const isTimeout = err.name === 'TimeoutError' || /timeout|timed out/i.test(String(err.message || ''));
+    if (isTimeout) {
+      console.error(`[${SERVICE_NAME}] ERROR: Logging service request timeout (connectivity or slow) –`, err.message);
+    } else {
+      console.warn(`[${SERVICE_NAME}] Logging service failed:`, err.message);
+    }
   }
 }
 

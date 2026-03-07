@@ -101,7 +101,8 @@ app.post('/api/ingest', async (req, res) => {
 
     return res.status(200).json({ success: true, payload: result.payload });
   } catch (err) {
-    logger.error('Ingest error (ai-microservice)', { error: err.message });
+    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
+    logger.error(`Ingest error (ai-microservice): ${reason}`, { message_id, reason, error: err.message });
     await logger.emitEvent({
       message_id,
       timestamp: ts,
@@ -150,7 +151,8 @@ app.post('/api/classify', async (req, res) => {
       raw_scores: result.raw_scores
     });
   } catch (err) {
-    logger.error('Classifier error (ai-microservice)', { error: err.message });
+    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
+    logger.error(`Classifier error (ai-microservice): ${reason}`, { message_id, reason, error: err.message });
     const escalationReason = err.status === 400 && err.body && err.body.escalation_reason
       ? err.body.escalation_reason
       : null;
@@ -423,8 +425,9 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
       }
     } catch (err) {
       const finishedAt = new Date().toISOString();
+      const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
       pushDemoLog(message_id, 'error', `Demo run error: ${err.message}`, { finished_at: finishedAt, progress: 'error', error: err.message });
-      logger.error('Demo run error', { message_id, error: err.message, finished_at: finishedAt });
+      logger.error(`Demo run error: ${reason}`, { message_id, reason, error: err.message, finished_at: finishedAt });
       demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
     }
   });
@@ -488,8 +491,9 @@ app.post('/api/demo/run-all', async (req, res) => {
         }
       } catch (err) {
         const finishedAt = new Date().toISOString();
+        const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
         pushDemoLog(message_id, 'error', `Demo run error: ${err.message}`, { finished_at: finishedAt, progress: 'error', error: err.message });
-        logger.error('Demo run-all item error', { message_id, error: err.message });
+        logger.error(`Demo run-all item error: ${reason}`, { message_id, reason, error: err.message });
         demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
       }
     }
@@ -518,7 +522,14 @@ async function checkLoggingReachable() {
   try {
     const res = await fetch(queryUrl, { signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
     return res.ok ? 'ok' : 'unreachable';
-  } catch {
+  } catch (err) {
+    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
+    logger.error(`Health check: logging service unreachable (${reason})`, {
+      reason,
+      error: err.message,
+      duration_ms: HEALTH_CHECK_TIMEOUT_MS,
+      url: base
+    });
     return 'unreachable';
   }
 }
@@ -531,7 +542,14 @@ async function checkAiReachable() {
   try {
     const res = await fetch(healthUrl, { signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS) });
     return res.ok ? 'ok' : 'unreachable';
-  } catch {
+  } catch (err) {
+    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
+    logger.error(`Health check: AI service unreachable (${reason})`, {
+      reason,
+      error: err.message,
+      duration_ms: HEALTH_CHECK_TIMEOUT_MS,
+      url: healthUrl
+    });
     return 'unreachable';
   }
 }

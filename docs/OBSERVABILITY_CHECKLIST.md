@@ -9,6 +9,7 @@ Checklist for logging, audit, and operations of the Agentic Email Processing Sys
 | `LOGGING_SERVICE_URL` used; no hardcoded logging URLs | Required |
 | `utils/logger.js` used for all agent events and errors | Required |
 | Keys only in `.env.example`; values in `.env` | Required |
+| **Timestamps and duration**: Every log entry has a timestamp (ISO 8601); request/process logs include `duration_ms` (and optionally `started_at`/`finished_at`) in metadata for timeout, hanging process, and request-duration analysis | Required |
 
 ## 2. Event Schema (Per Agent Decision)
 
@@ -54,6 +55,16 @@ Every agent outcome must emit at least one event with:
 | Backend filters central logging by message_id for that endpoint | Implemented |
 | Failed stages visible in frontend (status failed, error message) | Implemented |
 
-## 6. Operations (Outside Repo)
+## 6. Timeout and hang troubleshooting
+
+When ingest or classify times out (e.g. "AI service unreachable … Connect Timeout Error"):
+
+- **Do not increase timeouts.** Fix the underlying cause (see [master-prompt-development.md](agents/master-prompt-development.md)).
+- **Check ai-microservice logs** for the same time window as the failure:
+  - **Ingest:** Look for "Email-triage ingest request received" and "Email-triage ingest success" (or "rejected") with `duration_ms`. If the request never appears, the problem is connectivity (ai-microservice down, network, or DNS). If it appears with a large `duration_ms`, the handler or event loop is blocked.
+  - **Classify:** Look for "Email-triage classify request received" and "Email-triage classify success" with `duration_ms`. Same logic: no log → connectivity; high `duration_ms` → handler or event loop blocked.
+- **Client timeout:** agentic-email uses `lib/ai_client.js` with `TIMEOUT_MS = 15000` for calls to ai-microservice. Any proxy or load balancer between the two may have a shorter timeout (e.g. 10s); check nginx or deployment config if the error reports a 10s timeout.
+
+## 7. Operations (Outside Repo)
 
 Runbooks, alerting, and dashboard setup are ops responsibility; this checklist ensures the application emits the data needed for them.
