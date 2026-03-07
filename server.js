@@ -342,7 +342,8 @@ app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
     const merged = [...inMemory, ...fromService].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
     return res.json({ logs: merged });
   } catch (err) {
-    logger.error('Demo logs fetch error', { message_id, error: err.message });
+    const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
+    logger.error(`Demo logs fetch error: ${reason}`, { message_id, reason, error: err.message });
     const merged = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
     return res.json({ logs: merged, error: err.message || 'Failed to fetch logs' });
   }

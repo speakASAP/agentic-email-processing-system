@@ -36,6 +36,32 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     NODE_ENV="${NODE_ENV:-}"
 fi
 
+# Pull from remote in production; preserve local changes (stash uncommitted if any, then reapply).
+# Only sync if NODE_ENV is set to "production"
+if [ -d ".git" ]; then
+    if [ "$NODE_ENV" = "production" ]; then
+        echo -e "${BLUE}Production environment detected (NODE_ENV=production)${NC}"
+        echo -e "${BLUE}Pulling from remote (local changes preserved)...${NC}"
+        git fetch origin
+        BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        STASHED=0
+        if [ -n "$(git status --porcelain)" ]; then
+            git stash push -u -m "deploy.sh: stash before pull"
+            STASHED=1
+        fi
+        git pull origin "$BRANCH"
+        if [ "$STASHED" = "1" ]; then
+            git stash pop
+        fi
+        echo -e "${GREEN}✓ Repository updated from origin/$BRANCH (local changes preserved)${NC}"
+        echo ""
+    else
+        echo -e "${YELLOW}Development environment detected (NODE_ENV=${NODE_ENV:-not set})${NC}"
+        echo -e "${YELLOW}Skipping git sync - local changes will be preserved${NC}"
+        echo ""
+    fi
+fi
+
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║         Agentic Email Processing System — Production Deployment              ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
