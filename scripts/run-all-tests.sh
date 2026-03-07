@@ -1,18 +1,18 @@
 #!/bin/bash
 # Run all tests: AI connectivity, endpoint tests (Ingest → Classify → Extract → Decide + triage), and CLI curl tests.
-# If AEPS is not running on PORT, starts it with AI_SERVICE_URL=http://localhost:3380 so tests can pass when
-# AI service is on localhost (e.g. host or port-mapped). Requires AI service reachable at AI_SERVICE_URL.
+# Starts AEPS on a dedicated test port with AI_SERVICE_URL so it can reach AI on localhost; then runs all tests.
+# Requires AI service reachable at AI_SERVICE_URL (default http://localhost:3380).
 # Usage: ./scripts/run-all-tests.sh
-#   AEPS_URL defaults to http://localhost:3374
+#   AEPS_URL is set to the test instance (http://localhost:TEST_PORT).
 #   AI_SERVICE_URL defaults to http://localhost:3380 (host); in Docker use AI_SERVICE_URL=http://ai-microservice:3380
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-AEPS_URL="${AEPS_URL:-http://localhost:3374}"
 AI_SERVICE_URL="${AI_SERVICE_URL:-http://localhost:3380}"
-PORT="${PORT:-3374}"
+# Use dedicated test port so we control AEPS env (no conflict with existing AEPS on 3374)
+# Try 3376, 3377, 3378 if port is in use
 STARTED_AEPS=""
 
 # Check if something is listening on PORT
@@ -27,16 +27,38 @@ is_listening() {
   (echo >/dev/tcp/127.0.0.1/"$port") 2>/dev/null; return $?
 }
 
-# Start AEPS in background with AI_SERVICE_URL so it can reach AI on localhost
+# Find a free port in 3376-3378 (or use TEST_PORT if set)
+find_test_port() {
+  if [ -n "$TEST_PORT" ]; then
+    echo "$TEST_PORT"
+    return
+  fi
+  for p in 3376 3377 3378; do
+    if ! is_listening "$p"; then
+      echo "$p"
+      return
+    fi
+  done
+  echo "3378"
+}
+
+TEST_PORT=$(find_test_port)
+if is_listening "$TEST_PORT"; then
+  echo "No free test port in 3376-3378; set TEST_PORT to an available port."
+  exit 1
+fi
+AEPS_URL="http://localhost:$TEST_PORT"
+
+# Start AEPS in background on TEST_PORT with AI_SERVICE_URL so it can reach AI on localhost
 start_aeps() {
-  echo "AEPS not running on port $PORT; starting with AI_SERVICE_URL=$AI_SERVICE_URL ..."
-  AI_SERVICE_URL="$AI_SERVICE_URL" PORT="$PORT" node server.js &
+  echo "Starting AEPS on port $TEST_PORT with AI_SERVICE_URL=$AI_SERVICE_URL ..."
+  AI_SERVICE_URL="$AI_SERVICE_URL" PORT="$TEST_PORT" node server.js &
   STARTED_AEPS=$!
-  # Wait for health (up to 20s)
+  # Wait for health (up to 25s)
   local i=0
-  while [ $i -lt 20 ]; do
+  while [ $i -lt 25 ]; do
     if curl -s -o /dev/null -w "%{http_code}" "$AEPS_URL/health" 2>/dev/null | grep -q 200; then
-      echo "AEPS ready."
+      echo "AEPS ready at $AEPS_URL"
       return 0
     fi
     sleep 1
@@ -47,10 +69,8 @@ start_aeps() {
   exit 1
 }
 
-# Ensure AEPS is running with reachable AI (for host runs)
-if ! is_listening "$PORT"; then
-  start_aeps
-fi
+# Always start our own AEPS for testing so it has correct AI_SERVICE_URL
+start_aeps
 
 export AEPS_URL
 export AI_SERVICE_URL

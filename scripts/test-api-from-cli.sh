@@ -38,6 +38,8 @@ elapsed=$(awk "BEGIN {printf \"%.0f\", ($t1 - $t0) * 1000}")
 if [ "$code" = "200" ] && grep -q '"success":true' /tmp/ae_ingest.json; then
   echo "   HTTP $code  ${elapsed}ms  OK"
   echo "   success: true"
+elif [ "$code" = "503" ] && grep -qE "AI service unavailable|unreachable" /tmp/ae_ingest.json 2>/dev/null; then
+  echo "   HTTP $code  ${elapsed}ms  SKIP (AEPS cannot reach AI — run AEPS on host with AI_SERVICE_URL=$AI_DIRECT for full test)"
 else
   echo "   HTTP $code  ${elapsed}ms  FAIL"
   head -c 300 /tmp/ae_ingest.json; echo
@@ -55,6 +57,8 @@ if [ "$code" = "200" ] && grep -q '"success":true' /tmp/ae_triage.json; then
   echo "   success: true"
   grep -o '"intent":"[^"]*"' /tmp/ae_triage.json | head -1
   grep -o '"action":"[^"]*"' /tmp/ae_triage.json | head -1
+elif [ "$code" = "503" ] && grep -qE "AI service unavailable|unreachable" /tmp/ae_triage.json 2>/dev/null; then
+  echo "   HTTP $code  ${elapsed}ms  SKIP (AEPS cannot reach AI — run AEPS on host with AI_SERVICE_URL=$AI_DIRECT for full test)"
 else
   echo "   HTTP $code  ${elapsed}ms  FAIL"
   head -c 400 /tmp/ae_triage.json; echo

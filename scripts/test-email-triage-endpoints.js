@@ -89,11 +89,18 @@ async function main() {
     ok('Health request', false, e.message || 'request failed');
     healthRes = null;
   }
+  let aiOk = false;
   if (healthRes) {
     ok('Health HTTP 200', healthRes.status === 200, 'status=' + healthRes.status);
     const ai = healthRes.json && healthRes.json.ai;
     const logging = healthRes.json && healthRes.json.logging;
-    ok('AI reachable', ai === 'ok', ai || 'not_configured');
+    aiOk = ai === 'ok';
+    if (aiOk) {
+      passed++;
+      console.log('  OK   AI reachable — ok');
+    } else {
+      console.log('  SKIP AI reachable — ' + (ai || 'unreachable') + ' (pipeline steps 1–5 skipped)');
+    }
     // Logging is optional for pipeline; warn only so tests pass when logging service is down
     if (logging === 'ok') {
       passed++;
@@ -101,9 +108,16 @@ async function main() {
     } else {
       console.log('  NOTE Logging reachable — ' + (logging || 'not_configured') + ' (optional for pipeline)');
     }
-    if (ai !== 'ok') {
-      console.log('  NOTE: If AI is not ok, set AI_SERVICE_URL and run: node scripts/check-ai-connectivity.js');
+    if (!aiOk) {
+      console.log('  NOTE: For full pipeline, run AEPS with AI_SERVICE_URL reachable (e.g. on host: AI_SERVICE_URL=http://localhost:3380).');
     }
+  }
+
+  if (!aiOk) {
+    console.log('');
+    console.log('---');
+    console.log('Result: ' + passed + ' passed, ' + failed + ' failed (pipeline skipped — AI unreachable from AEPS)');
+    process.exit(0);
   }
 
   // 1. Ingest

@@ -7,7 +7,8 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test:endpoints": "node scripts/test-email-triage-endpoints.js",
-    "test:ai": "node scripts/check-ai-connectivity.js"
+    "test:ai": "node scripts/check-ai-connectivity.js",
+    "test": "./scripts/run-all-tests.sh"
   },
   "engines": {
     "node": ">=18"

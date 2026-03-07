@@ -139,7 +139,15 @@ To verify the AI microservice itself (health, ready, ingest) without going throu
 - **Usage:** `npm run test:ai` or `node scripts/check-ai-connectivity.js`
 - Uses `AI_SERVICE_URL` (e.g. `http://ai-microservice:3380` in Docker, `http://localhost:3380` on host).
 
-Ensure the service and `AI_SERVICE_URL` are running before running endpoint tests. Additional curl-based tests: `scripts/test-api-from-cli.sh`.
+### Run all tests
+
+One command runs AI connectivity, endpoint tests (Ingest → Classify → Extract → Decide + triage), and CLI curl tests. The script starts AEPS on a free test port (3376–3378) with `AI_SERVICE_URL=http://localhost:3380`, so the AI service must be reachable on port 3380 (e.g. host or port-mapped).
+
+- **Usage:** `npm test` or `./scripts/run-all-tests.sh`
+- **Requires:** AI service running at `AI_SERVICE_URL` (default `http://localhost:3380`).
+- **Exit:** 0 if all pass, 1 if any fail.
+
+Additional curl-based tests only: `scripts/test-api-from-cli.sh` (set `AEPS_URL` and `AI_SERVICE_URL` as needed).
 
 ## Deployment
 
