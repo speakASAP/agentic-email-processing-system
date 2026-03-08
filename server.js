@@ -11,7 +11,7 @@ const path = require('path');
 const aiClient = require('./lib/ai_client');
 const logger = require('./utils/logger');
 const { runTriagePipeline } = require('./lib/triage_pipeline');
-const demoDataset = require('./lib/demo_dataset');
+const emailDataset = require('./lib/email_dataset');
 
 const app = express();
 
@@ -33,31 +33,31 @@ app.use(express.json({ limit: '1mb' }));
 
 const PORT = process.env.PORT || 3374;
 
-// In-memory demo log buffer per message_id (so "See logs..." shows progress even if LOGGING_SERVICE_URL is down)
-const DEMO_LOG_BUFFER_MAX = 100;
-const demoLogBuffer = new Map();
+// In-memory run log buffer per message_id (so "See logs..." shows progress even if LOGGING_SERVICE_URL is down)
+const RUN_LOG_BUFFER_MAX = 100;
+const runLogBuffer = new Map();
 
 // Applications directory: logs stored in 3 places — central service, in-memory, and local logs/ dir
 const LOG_DIR = process.env.LOG_DIR || 'logs';
-const DEMO_LOG_FILE = 'demo.log';
+const RUN_LOG_FILE = 'run.log';
 
-function getDemoLogPath() {
+function getRunLogPath() {
   const dir = path.isAbsolute(LOG_DIR) ? LOG_DIR : path.join(__dirname, LOG_DIR);
-  return path.join(dir, DEMO_LOG_FILE);
+  return path.join(dir, RUN_LOG_FILE);
 }
 
-function appendDemoLogToFile(entry) {
+function appendRunLogToFile(entry) {
   try {
-    const filePath = getDemoLogPath();
+    const filePath = getRunLogPath();
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.appendFileSync(filePath, JSON.stringify(entry) + '\n', 'utf8');
   } catch (err) {
-    logger.error('Failed to write demo log to file', { error: err.message });
+    logger.error('Failed to write run log to file', { error: err.message });
   }
 }
 
-function pushDemoLog(message_id, level, message, metadata = {}) {
+function pushRunLog(message_id, level, message, metadata = {}) {
   const key = String(message_id);
   const entry = {
     level,
@@ -66,16 +66,16 @@ function pushDemoLog(message_id, level, message, metadata = {}) {
     timestamp: new Date().toISOString(),
     metadata: { message_id: key, ...metadata }
   };
-  if (!demoLogBuffer.has(key)) demoLogBuffer.set(key, []);
-  const arr = demoLogBuffer.get(key);
+  if (!runLogBuffer.has(key)) runLogBuffer.set(key, []);
+  const arr = runLogBuffer.get(key);
   arr.push(entry);
-  if (arr.length > DEMO_LOG_BUFFER_MAX) arr.shift();
-  appendDemoLogToFile(entry);
+  if (arr.length > RUN_LOG_BUFFER_MAX) arr.shift();
+  appendRunLogToFile(entry);
 }
 
-// Demo dataset: load once at startup
-demoDataset.ensureLoaded();
-logger.info(`Demo dataset loaded: ${demoDataset.getMessageIds().length} emails`);
+// Test dataset: load once at startup
+emailDataset.ensureLoaded();
+logger.info(`Test dataset loaded: ${emailDataset.getMessageIds().length} emails`);
 
 // --- Ingest (proxies to ai-microservice) ---
 app.post('/api/ingest', async (req, res) => {
@@ -309,47 +309,47 @@ app.post('/api/triage', async (req, res) => {
   }
 });
 
-// --- Demo API: 50-email dataset and per-email workflow state ---
-// In-memory analysis mode: user can switch AI (LLM) vs rule-based for Classifier and Decider (compare output)
-let demoAnalysisMode = { useLlmClassifier: false, useLlmDecider: false };
+// --- App API: test dataset (50 emails) and per-email workflow state ---
+// In-memory analysis mode: user can switch AI (LLM) vs rule-based for Classifier and Decider
+let analysisMode = { useLlmClassifier: false, useLlmDecider: false };
 
-function getDemoSettings() {
-  return { useLlmClassifier: demoAnalysisMode.useLlmClassifier, useLlmDecider: demoAnalysisMode.useLlmDecider };
+function getSettings() {
+  return { useLlmClassifier: analysisMode.useLlmClassifier, useLlmDecider: analysisMode.useLlmDecider };
 }
 
-app.get('/api/demo/settings', (req, res) => {
-  res.json(getDemoSettings());
+app.get('/api/settings', (req, res) => {
+  res.json(getSettings());
 });
 
-app.put('/api/demo/settings', (req, res) => {
+app.put('/api/settings', (req, res) => {
   const body = req.body || {};
-  if (typeof body.useLlmClassifier === 'boolean') demoAnalysisMode.useLlmClassifier = body.useLlmClassifier;
-  if (typeof body.useLlmDecider === 'boolean') demoAnalysisMode.useLlmDecider = body.useLlmDecider;
-  logger.info('Demo settings updated', getDemoSettings());
-  res.json(getDemoSettings());
+  if (typeof body.useLlmClassifier === 'boolean') analysisMode.useLlmClassifier = body.useLlmClassifier;
+  if (typeof body.useLlmDecider === 'boolean') analysisMode.useLlmDecider = body.useLlmDecider;
+  logger.info('Settings updated', getSettings());
+  res.json(getSettings());
 });
 
-app.get('/api/demo/emails', (req, res) => {
-  demoDataset.ensureLoaded();
-  const list = demoDataset.getList();
+app.get('/api/emails', (req, res) => {
+  emailDataset.ensureLoaded();
+  const list = emailDataset.getList();
   res.json({ emails: list });
 });
 
-app.get('/api/demo/emails/:message_id', (req, res) => {
-  demoDataset.ensureLoaded();
-  const rec = demoDataset.get(req.params.message_id);
+app.get('/api/emails/:message_id', (req, res) => {
+  emailDataset.ensureLoaded();
+  const rec = emailDataset.get(req.params.message_id);
   if (!rec) return res.status(404).json({ error: 'Email not found' });
   res.json(rec);
 });
 
-// Demo: fetch logs for this email (message_id) from central logging service for "See logs..." in GUI
+// Fetch logs for this email (message_id) from central logging service for "See logs..." in GUI
 // Query: ?source=memory = return only in-memory logs immediately (no central fetch). Omit for merged logs.
 const LOGS_CENTRAL_TIMEOUT_MS = Math.min(10000, Math.max(2000, parseInt(process.env.LOGS_CENTRAL_TIMEOUT_MS || '4000', 10) || 4000));
 
-app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
-  demoDataset.ensureLoaded();
+app.get('/api/emails/:message_id/logs', async (req, res) => {
+  emailDataset.ensureLoaded();
   const message_id = req.params.message_id;
-  const rec = demoDataset.get(message_id);
+  const rec = emailDataset.get(message_id);
   if (!rec) return res.status(404).json({ error: 'Email not found' });
 
   const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
@@ -357,7 +357,7 @@ app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 300, 500);
   const sourceMemoryOnly = (req.query.source || '').toLowerCase() === 'memory';
 
-  const inMemory = demoLogBuffer.get(String(message_id)) || [];
+  const inMemory = runLogBuffer.get(String(message_id)) || [];
   const sortedMemory = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
 
   if (sourceMemoryOnly || !LOGGING_SERVICE_URL) {
@@ -391,89 +391,89 @@ app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
     return res.json({ logs: merged });
   } catch (err) {
     const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
-    logger.error(`Demo logs fetch error: ${reason}`, { message_id, reason, error: err.message });
+    logger.error(`Logs fetch error: ${reason}`, { message_id, reason, error: err.message });
     const merged = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
     return res.json({ logs: merged, error: err.message || 'Failed to fetch logs' });
   }
 });
 
-app.put('/api/demo/emails/:message_id', (req, res) => {
-  demoDataset.ensureLoaded();
+app.put('/api/emails/:message_id', (req, res) => {
+  emailDataset.ensureLoaded();
   const message_id = req.params.message_id;
-  const rec = demoDataset.get(message_id);
+  const rec = emailDataset.get(message_id);
   if (!rec) return res.status(404).json({ error: 'Email not found' });
   const payload = req.body && req.body.email ? req.body.email : req.body;
   if (!payload || typeof payload !== 'object') {
     return res.status(400).json({ error: 'Body must include email payload (e.g. { email: { subject, sender, body_plain } })' });
   }
-  const ok = demoDataset.updateEmail(message_id, payload);
+  const ok = emailDataset.updateEmail(message_id, payload);
   if (!ok) return res.status(400).json({ error: 'Update failed' });
-  logger.info('Demo email updated', { message_id });
+  logger.info('Email updated', { message_id });
   res.json({ ok: true, message_id });
 });
 
-app.post('/api/demo/emails/:message_id/clear', (req, res) => {
-  demoDataset.ensureLoaded();
+app.post('/api/emails/:message_id/clear', (req, res) => {
+  emailDataset.ensureLoaded();
   const message_id = req.params.message_id;
-  const rec = demoDataset.get(message_id);
+  const rec = emailDataset.get(message_id);
   if (!rec) return res.status(404).json({ error: 'Email not found' });
-  demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
-  for (const stage of demoDataset.STAGES) {
-    demoDataset.setStageResult(message_id, stage, 'pending', {});
+  emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_PENDING);
+  for (const stage of emailDataset.STAGES) {
+    emailDataset.setStageResult(message_id, stage, 'pending', {});
   }
-  logger.info('Demo results cleared', { message_id });
+  logger.info('Results cleared', { message_id });
   res.json({ ok: true, message_id });
 });
 
-app.post('/api/demo/clear-all', (req, res) => {
-  demoDataset.ensureLoaded();
-  const ids = demoDataset.getMessageIds();
+app.post('/api/clear-all', (req, res) => {
+  emailDataset.ensureLoaded();
+  const ids = emailDataset.getMessageIds();
   for (const message_id of ids) {
-    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
-    for (const stage of demoDataset.STAGES) {
-      demoDataset.setStageResult(message_id, stage, 'pending', {});
+    emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_PENDING);
+    for (const stage of emailDataset.STAGES) {
+      emailDataset.setStageResult(message_id, stage, 'pending', {});
     }
   }
-  logger.info('Demo results cleared for all emails', { count: ids.length });
+  logger.info('Results cleared for all emails', { count: ids.length });
   res.json({ ok: true, count: ids.length });
 });
 
-app.post('/api/demo/emails/:message_id/run', async (req, res) => {
-  demoDataset.ensureLoaded();
+app.post('/api/emails/:message_id/run', async (req, res) => {
+  emailDataset.ensureLoaded();
   const message_id = req.params.message_id;
-  const rec = demoDataset.get(message_id);
+  const rec = emailDataset.get(message_id);
   if (!rec) return res.status(404).json({ error: 'Email not found' });
   const body = req.body || {};
   const runOptions = {};
   if (typeof body.useLlmClassifier === 'boolean') runOptions.useLlmClassifier = body.useLlmClassifier;
   if (typeof body.useLlmDecider === 'boolean') runOptions.useLlmDecider = body.useLlmDecider;
   // Reset stages to pending then run in background so UI can poll
-  demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
-  for (const stage of demoDataset.STAGES) {
-    demoDataset.setStageResult(message_id, stage, 'pending', {});
+  emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_PENDING);
+  for (const stage of emailDataset.STAGES) {
+    emailDataset.setStageResult(message_id, stage, 'pending', {});
   }
-  demoDataset.setStageRunning(message_id, 'ingest');
+  emailDataset.setStageRunning(message_id, 'ingest');
   res.status(202).json({ accepted: true, message_id });
 
   setImmediate(async () => {
     const startedAt = new Date().toISOString();
-    pushDemoLog(message_id, 'info', 'Demo run started', { started_at: startedAt, progress: 'started' });
-    logger.info('Demo run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
+    pushRunLog(message_id, 'info', 'Triage run started', { started_at: startedAt, progress: 'started', useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
+    logger.info('Triage run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
 
     const email = rec.email;
     const onStageStart = (stage) => {
       const ts = new Date().toISOString();
-      pushDemoLog(message_id, 'info', `Stage started: ${stage}`, { stage, started_at: ts, progress: stage });
-      logger.info('Demo run stage started', { message_id, stage, started_at: ts });
-      demoDataset.setStageRunning(message_id, stage);
+      pushRunLog(message_id, 'info', `Stage started: ${stage}`, { stage, started_at: ts, progress: stage });
+      logger.info('Triage run stage started', { message_id, stage, started_at: ts });
+      emailDataset.setStageRunning(message_id, stage);
     };
     const onStageEnd = (stage, err, data) => {
       const finishedAt = new Date().toISOString();
       if (err) {
-        pushDemoLog(message_id, 'error', `Stage failed: ${stage} — ${err.message}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: err.message });
-        logger.error('Demo run stage failed', { message_id, stage, error: err.message, finished_at: finishedAt });
-        demoDataset.setStageResult(message_id, stage, 'failed', { error: err.message });
-        demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+        pushRunLog(message_id, 'error', `Stage failed: ${stage} — ${err.message}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: err.message });
+        logger.error('Triage run stage failed', { message_id, stage, error: err.message, finished_at: finishedAt });
+        emailDataset.setStageResult(message_id, stage, 'failed', { error: err.message });
+        emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
         return;
       }
       const ok = stage === 'ingest' ? (data && data.success) : true;
@@ -500,37 +500,37 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
           }
           if (data.summary != null) meta.summary = data.summary;
         }
-        pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, meta);
-        logger.info('Demo run stage completed', { message_id, stage, finished_at: finishedAt, ...(stage === 'classify' && data ? { intent: data.intent, confidence: data.confidence, raw_scores: data.raw_scores } : {}), ...(stage === 'extract' && data && data.entities ? { product_refs_count: (data.entities.product_refs || []).length, amounts_count: (data.entities.amounts || []).length, dates_count: (data.entities.dates || []).length, contract_refs_count: (data.entities.contract_refs || []).length, summary: data.summary } : {}) });
+        pushRunLog(message_id, 'info', `Stage completed: ${stage}`, meta);
+        logger.info('Triage run stage completed', { message_id, stage, finished_at: finishedAt, ...(stage === 'classify' && data ? { intent: data.intent, confidence: data.confidence, raw_scores: data.raw_scores } : {}), ...(stage === 'extract' && data && data.entities ? { product_refs_count: (data.entities.product_refs || []).length, amounts_count: (data.entities.amounts || []).length, dates_count: (data.entities.dates || []).length, contract_refs_count: (data.entities.contract_refs || []).length, summary: data.summary } : {}) });
       } else {
-        pushDemoLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
-        logger.error('Demo run stage failed', { message_id, stage, error: (data && data.error) || 'unknown', finished_at: finishedAt });
+        pushRunLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
+        logger.error('Triage run stage failed', { message_id, stage, error: (data && data.error) || 'unknown', finished_at: finishedAt });
       }
-      demoDataset.setStageResult(message_id, stage, ok ? 'success' : 'failed', data);
-      if (!ok) demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+      emailDataset.setStageResult(message_id, stage, ok ? 'success' : 'failed', data);
+      if (!ok) emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
     };
-    const options = Object.keys(runOptions).length ? runOptions : getDemoSettings();
+    const options = Object.keys(runOptions).length ? runOptions : getSettings();
     try {
       const result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, options);
       const finishedAt = new Date().toISOString();
       if (result.success) {
-        demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_COMPLETED);
-        pushDemoLog(message_id, 'info', 'Demo run completed successfully', { finished_at: finishedAt, progress: 'completed', success: true });
-        logger.info('Demo run completed', { message_id, success: true, finished_at: finishedAt });
+        emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_COMPLETED);
+        pushRunLog(message_id, 'info', 'Triage run completed successfully', { finished_at: finishedAt, progress: 'completed', success: true });
+        logger.info('Triage run completed', { message_id, success: true, finished_at: finishedAt });
       } else {
         if (result.step) {
-          demoDataset.setStageResult(message_id, result.step, 'failed', { error: result.error });
+          emailDataset.setStageResult(message_id, result.step, 'failed', { error: result.error });
         }
-        demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
-        pushDemoLog(message_id, 'error', `Demo run failed: ${result.error || 'unknown'}`, { finished_at: finishedAt, progress: 'failed', success: false, step: result.step, error: result.error });
-        logger.error('Demo run completed with failure', { message_id, success: false, step: result.step, error: result.error, finished_at: finishedAt });
+        emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
+        pushRunLog(message_id, 'error', `Triage run failed: ${result.error || 'unknown'}`, { finished_at: finishedAt, progress: 'failed', success: false, step: result.step, error: result.error });
+        logger.error('Triage run completed with failure', { message_id, success: false, step: result.step, error: result.error, finished_at: finishedAt });
       }
     } catch (err) {
       const finishedAt = new Date().toISOString();
       const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
-      pushDemoLog(message_id, 'error', `Demo run error: ${err.message}`, { finished_at: finishedAt, progress: 'error', error: err.message });
-      logger.error(`Demo run error: ${reason}`, { message_id, reason, error: err.message, finished_at: finishedAt });
-      demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+      pushRunLog(message_id, 'error', `Triage run error: ${err.message}`, { finished_at: finishedAt, progress: 'error', error: err.message });
+      logger.error(`Triage run error: ${reason}`, { message_id, reason, error: err.message, finished_at: finishedAt });
+      emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
     }
   });
 });
@@ -541,27 +541,27 @@ const DEFAULT_RUN_ALL_CONCURRENCY = 5;
 
 async function runOneEmail(message_id, rec, runOptions = {}) {
   const startedAt = new Date().toISOString();
-  pushDemoLog(message_id, 'info', 'Demo run started', { started_at: startedAt, progress: 'started' });
-  logger.info('Demo run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
+  pushRunLog(message_id, 'info', 'Triage run started', { started_at: startedAt, progress: 'started', useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
+  logger.info('Triage run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
 
-  demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
-  for (const stage of demoDataset.STAGES) {
-    demoDataset.setStageResult(message_id, stage, 'pending', {});
+  emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_PENDING);
+  for (const stage of emailDataset.STAGES) {
+    emailDataset.setStageResult(message_id, stage, 'pending', {});
   }
-  demoDataset.setStageRunning(message_id, 'ingest');
+  emailDataset.setStageRunning(message_id, 'ingest');
   const email = rec.email;
   const onStageStart = (stage) => {
     const ts = new Date().toISOString();
-    pushDemoLog(message_id, 'info', `Stage started: ${stage}`, { stage, started_at: ts, progress: stage });
-    logger.info('Demo run stage started', { message_id, stage, started_at: ts });
-    demoDataset.setStageRunning(message_id, stage);
+    pushRunLog(message_id, 'info', `Stage started: ${stage}`, { stage, started_at: ts, progress: stage });
+    logger.info('Triage run stage started', { message_id, stage, started_at: ts });
+    emailDataset.setStageRunning(message_id, stage);
   };
   const onStageEnd = (stage, err, data) => {
     const finishedAt = new Date().toISOString();
     if (err) {
-      pushDemoLog(message_id, 'error', `Stage failed: ${stage} — ${err.message}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: err.message });
-      demoDataset.setStageResult(message_id, stage, 'failed', { error: err.message });
-      demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+      pushRunLog(message_id, 'error', `Stage failed: ${stage} — ${err.message}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: err.message });
+      emailDataset.setStageResult(message_id, stage, 'failed', { error: err.message });
+      emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
       return;
     }
     const ok = stage === 'ingest' ? (data && data.success) : true;
@@ -588,15 +588,15 @@ async function runOneEmail(message_id, rec, runOptions = {}) {
         }
         if (data.summary != null) meta.summary = data.summary;
       }
-      pushDemoLog(message_id, 'info', `Stage completed: ${stage}`, meta);
+      pushRunLog(message_id, 'info', `Stage completed: ${stage}`, meta);
     } else {
-      pushDemoLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
+      pushRunLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
     }
-    demoDataset.setStageResult(message_id, stage, ok ? 'success' : 'failed', data);
-    if (!ok) demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+    emailDataset.setStageResult(message_id, stage, ok ? 'success' : 'failed', data);
+    if (!ok) emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
   };
 
-  const options = Object.keys(runOptions).length ? runOptions : getDemoSettings();
+  const options = Object.keys(runOptions).length ? runOptions : getSettings();
   let result;
   let pipelineErr = null;
   try {
@@ -609,13 +609,13 @@ async function runOneEmail(message_id, rec, runOptions = {}) {
     const reason = aiClient.getErrorReason ? aiClient.getErrorReason(pipelineErr) : 'other';
     const retryable = (reason === 'timeout' || reason === 'connectivity');
     if (retryable) {
-      pushDemoLog(message_id, 'info', 'Retrying pipeline once after timeout/connectivity', { reason, delay_ms: RUN_ALL_RETRY_DELAY_MS });
-      logger.info('Demo run-all retrying once after timeout/connectivity', { message_id, reason });
+      pushRunLog(message_id, 'info', 'Retrying pipeline once after timeout/connectivity', { reason, delay_ms: RUN_ALL_RETRY_DELAY_MS });
+      logger.info('Run-all retrying once after timeout/connectivity', { message_id, reason });
       await new Promise((r) => setTimeout(r, RUN_ALL_RETRY_DELAY_MS));
-      for (const stage of demoDataset.STAGES) {
-        demoDataset.setStageResult(message_id, stage, 'pending', {});
+      for (const stage of emailDataset.STAGES) {
+        emailDataset.setStageResult(message_id, stage, 'pending', {});
       }
-      demoDataset.setStageRunning(message_id, 'ingest');
+      emailDataset.setStageRunning(message_id, 'ingest');
       pipelineErr = null;
       try {
         result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, options);
@@ -628,28 +628,28 @@ async function runOneEmail(message_id, rec, runOptions = {}) {
   if (pipelineErr) {
     const finishedAt = new Date().toISOString();
     const reason = aiClient.getErrorReason ? aiClient.getErrorReason(pipelineErr) : 'other';
-    pushDemoLog(message_id, 'error', `Demo run error: ${pipelineErr.message}`, { finished_at: finishedAt, progress: 'error', error: pipelineErr.message });
-    logger.error(`Demo run-all item error: ${reason}`, { message_id, reason, error: pipelineErr.message });
-    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+    pushRunLog(message_id, 'error', `Triage run error: ${pipelineErr.message}`, { finished_at: finishedAt, progress: 'error', error: pipelineErr.message });
+    logger.error(`Run-all item error: ${reason}`, { message_id, reason, error: pipelineErr.message });
+    emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
     return;
   }
 
   const finishedAt = new Date().toISOString();
   if (result.success) {
-    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_COMPLETED);
-    pushDemoLog(message_id, 'info', 'Demo run completed successfully', { finished_at: finishedAt, progress: 'completed', success: true });
+    emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_COMPLETED);
+    pushRunLog(message_id, 'info', 'Triage run completed successfully', { finished_at: finishedAt, progress: 'completed', success: true });
   } else {
     if (result.step) {
-      demoDataset.setStageResult(message_id, result.step, 'failed', { error: result.error });
+      emailDataset.setStageResult(message_id, result.step, 'failed', { error: result.error });
     }
-    demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
-    pushDemoLog(message_id, 'error', `Demo run failed: ${result.error || 'unknown'}`, { finished_at: finishedAt, progress: 'failed', success: false, step: result.step, error: result.error });
+    emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
+    pushRunLog(message_id, 'error', `Triage run failed: ${result.error || 'unknown'}`, { finished_at: finishedAt, progress: 'failed', success: false, step: result.step, error: result.error });
   }
 }
 
-app.post('/api/demo/run-all', async (req, res) => {
-  demoDataset.ensureLoaded();
-  const ids = demoDataset.getMessageIds();
+app.post('/api/run-all', async (req, res) => {
+  emailDataset.ensureLoaded();
+  const ids = emailDataset.getMessageIds();
   const body = req.body || {};
   const raw = body && (typeof body.concurrency === 'number' || typeof body.concurrency === 'string') ? body.concurrency : null;
   const requested = raw != null ? parseInt(raw, 10) : null;
@@ -665,21 +665,21 @@ app.post('/api/demo/run-all', async (req, res) => {
     async function worker() {
       while (nextIndex < ids.length) {
         const message_id = ids[nextIndex++];
-        const rec = demoDataset.get(message_id);
+        const rec = emailDataset.get(message_id);
         if (!rec) continue;
         try {
           await runOneEmail(message_id, rec, runAllOptions);
         } catch (outerErr) {
-          logger.error('Demo run-all iteration error (continuing queue)', { message_id, error: outerErr.message });
+          logger.error('Run-all iteration error (continuing queue)', { message_id, error: outerErr.message });
           try {
-            pushDemoLog(message_id, 'error', `Demo run error: ${outerErr.message}`, { progress: 'error', error: outerErr.message });
-            demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
+            pushRunLog(message_id, 'error', `Triage run error: ${outerErr.message}`, { progress: 'error', error: outerErr.message });
+            emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
           } catch (_) { /* ignore */ }
         }
       }
     }
     await Promise.all(Array.from({ length: concurrency }, () => worker()));
-    logger.info('Demo run-all completed', { count: ids.length, concurrency });
+    logger.info('Run-all completed', { count: ids.length, concurrency });
   });
 });
 
@@ -687,10 +687,10 @@ app.post('/api/demo/run-all', async (req, res) => {
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Frontend at root: https://aeps.alfares.cz only (served at /)
-const demoDir = path.join(__dirname, 'public', 'demo');
-const sendDemoIndex = (req, res) => res.sendFile(path.join(demoDir, 'index.html'));
-app.get('/', sendDemoIndex);
-app.use(express.static(demoDir));
+const appDir = path.join(__dirname, 'public', 'app');
+const sendAppIndex = (req, res) => res.sendFile(path.join(appDir, 'index.html'));
+app.get('/', sendAppIndex);
+app.use(express.static(appDir));
 
 // Check reachability of LOGGING_SERVICE_URL (for "See logs…") and AI_SERVICE_URL (email-triage agents)
 // Keep short so /health returns within deploy script's health-check timeout (5s)
@@ -743,7 +743,7 @@ app.get('/health', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Phase 1+3 listening on port ${PORT} (email-triage agents via AI_SERVICE_URL)`);
-  // Warm up connection to AI service so first demo/triage request does not hit cold connect (avoids 5s timeout)
+  // Warm up connection to AI service so first triage request does not hit cold connect (avoids 5s timeout)
   setImmediate(() => {
     try {
       if (typeof aiClient.checkAiHealth === 'function') {

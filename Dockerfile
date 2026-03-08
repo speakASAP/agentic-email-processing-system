@@ -12,7 +12,7 @@ ENV npm_config_update_notifier=false
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-# Copy application and demo dataset (docs/sample_intent_dataset.json)
+# Copy application and test dataset (docs/sample_intent_dataset.json)
 COPY server.js ./
 COPY lib ./lib
 COPY utils ./utils

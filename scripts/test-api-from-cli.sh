@@ -8,7 +8,7 @@ set -e
 
 AEPS_URL="${AEPS_URL:-http://localhost:3374}"
 AI_DIRECT="${AI_SERVICE_URL:-http://localhost:3380}"
-INGEST_BODY='{"message_id":"cli-test","tenant_id":"demo","timestamp":"2026-03-07T12:00:00.000Z","sender":"mark.jensen@example.com","recipients":["support@example.com"],"subject":"Unable to access my dashboard","body_plain":"Hi, I logged in but my dashboard is empty. Thanks, Mark","attachments":[]}'
+INGEST_BODY='{"message_id":"cli-test","tenant_id":"test","timestamp":"2026-03-07T12:00:00.000Z","sender":"mark.jensen@example.com","recipients":["support@example.com"],"subject":"Unable to access my dashboard","body_plain":"Hi, I logged in but my dashboard is empty. Thanks, Mark","attachments":[]}'
 
 FAILED=0
 

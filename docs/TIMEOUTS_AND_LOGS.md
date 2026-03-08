@@ -9,7 +9,7 @@
 | `lib/ai_client.js` | **15 000 ms (15 s)** | Total request timeout for classify, extract, decide. `AbortSignal.timeout(TIMEOUT_MS)` and undici `connectTimeout: TIMEOUT_MS`. |
 | `lib/ai_client.js` | **5 000 ms (5 s)** | Ingest timeout (`AI_INGEST_TIMEOUT_MS`, env-overridable). Ingest is rule-based only; short timeout is intentional. |
 | `lib/ai_client.js` | (undici missing) | If undici is not installed, global `fetch` is used; connect phase can use ~10 s default. |
-| `server.js` | 10 000 ms | Fetch for demo query URL. |
+| `server.js` | 10 000 ms | Fetch for logs query URL. |
 | `server.js` | 3 000 ms | Health check (LOGGING_SERVICE_URL and AI_SERVICE_URL). |
 | `utils/logger.js` | 2 000 ms | Logging service request. |
 
@@ -88,4 +88,4 @@ If you **do not** see `Email-triage ingest request received` when the client tim
 **Summary of findings (when both containers are on `nginx-network`):**
 
 - Orchestrator responds on `localhost:3380` (host) and on `ai-microservice:3380` (from agentic-email container).
-- If you still see 15 s timeouts in the demo, run the in-container script at the time of failure to see whether the failure is timeout, ECONNREFUSED, or ENOTFOUND. If the script passes but the demo still times out, the issue may be concurrency or a cold-start delay (e.g. first request after idle).
+- If you still see 15 s timeouts in the UI, run the in-container script at the time of failure to see whether the failure is timeout, ECONNREFUSED, or ENOTFOUND. If the script passes but triage still times out, the issue may be concurrency or a cold-start delay (e.g. first request after idle).

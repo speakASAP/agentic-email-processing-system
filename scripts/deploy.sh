@@ -297,7 +297,7 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
         echo -e "${YELLOW}⚠️  HTTPS check failed or timeout for https://${DOMAIN}/ (HTTP $AEPS_HTTP_CODE) — verify cert and nginx config.${NC}"
     fi
 
-    # Check that AEPS container can reach ai-microservice (required for demo/triage to work)
+    # Check that AEPS container can reach ai-microservice (required for triage to work)
     AEPS_CONTAINER="${CONTAINER_BASE}-${ACTIVE_COLOR}"
     if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${AEPS_CONTAINER}$"; then
         if ! docker exec "$AEPS_CONTAINER" wget -q -O- --timeout=5 http://ai-microservice:3380/health >/dev/null 2>&1; then
@@ -305,7 +305,7 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
             echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
             echo -e "${YELLOW}║  ⚠️  AI service (ai-microservice:3380) not reachable from this container     ║${NC}"
             echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
-            echo -e "${YELLOW}  Demo/triage will show 'AI service unreachable ... timeout' until fixed.${NC}"
+            echo -e "${YELLOW}  Triage will show 'AI service unreachable ... timeout' until fixed.${NC}"
             echo -e "${YELLOW}  On this host: deploy ai-microservice (same nginx-network), then ensure only${NC}"
             echo -e "${YELLOW}  one ai-microservice stack (blue or green) is running.${NC}"
             echo ""
@@ -377,6 +377,6 @@ else
     echo "  4. Review deployment logs (and container logs if health check fails)"
     echo "  5. Check service health: cd $NGINX_MICROSERVICE_PATH && ./scripts/blue-green/health-check.sh $SERVICE_NAME"
     echo "  6. If nginx reload fails due to another service's config (e.g. minio-proxy-settings.conf), fix that in nginx-microservice or ensure all required include files exist."
-    echo "  7. If demo shows 'AI service unreachable ... timeout': deploy ai-microservice on this host and ensure only one stack (blue or green) is running; from AEPS container, http://ai-microservice:3380/health must return 200."
+    echo "  7. If the UI shows 'AI service unreachable ... timeout': deploy ai-microservice on this host and ensure only one stack (blue or green) is running; from AEPS container, http://ai-microservice:3380/health must return 200."
     exit 1
 fi

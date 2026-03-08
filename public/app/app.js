@@ -1,8 +1,8 @@
 /**
- * Demo UI: list 50 emails, detail view with stage stepper, short polling for live updates.
+ * Web UI: test dataset (50 emails), detail view with stage stepper, short polling for live updates.
  */
 
-const API = '/api/demo';
+const API = '/api';
 const POLL_INTERVAL_MS = 1500;
 
 let allEmails = [];
@@ -88,7 +88,7 @@ function updateEmail(id, payload) {
 /** @param {string} messageId
  *  @param {{ sourceMemory?: boolean }} [opts] - sourceMemory: true = only in-memory (faster). Omit for merged with central.
  *  @returns {Promise<{ logs: Array<{timestamp?: string, level?: string, message?: string, metadata?: object}>, error?: string }>} */
-function fetchDemoLogs(messageId, opts = {}) {
+function fetchLogs(messageId, opts = {}) {
   const qs = opts.sourceMemory ? '?source=memory' : '';
   return fetchJson(`${API}/emails/${encodeURIComponent(messageId)}/logs${qs}`).then((data) => ({
     logs: data.logs || [],
@@ -326,7 +326,7 @@ function fillStageBody(rec, st, bodyEl, messageId) {
       }).join('') : '<span class="logs-empty">No log lines for this email.</span>';
     } else {
       logsContent.textContent = 'Loading…';
-      fetchDemoLogs(messageId).then(({ logs, error }) => {
+      fetchLogs(messageId).then(({ logs, error }) => {
         cachedLogs = logs;
         cachedLogsMessageId = messageId;
         if (logsContent.textContent === 'Loading…') {
@@ -542,10 +542,10 @@ function openLogsModal(messageId) {
   if (!modal || !content) return;
   content.textContent = 'Loading…';
   modal.removeAttribute('hidden');
-  fetchDemoLogs(messageId, { sourceMemory: true })
+  fetchLogs(messageId, { sourceMemory: true })
     .then(({ logs, error }) => {
       renderLogsContent(content, logs, error);
-      fetchDemoLogs(messageId).then(({ logs: logsFull, error: errFull }) => {
+      fetchLogs(messageId).then(({ logs: logsFull, error: errFull }) => {
         if (!$('logs-modal')?.hasAttribute('hidden') && content.parentElement && selectedId === messageId) {
           renderLogsContent(content, logsFull, errFull);
         }

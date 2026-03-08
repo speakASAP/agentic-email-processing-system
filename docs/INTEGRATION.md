@@ -33,9 +33,9 @@ API and event contracts are defined in Phase 0. **Sync A:** [SYNC_A_VALIDATION](
 - Escalation contract: [docs/contracts/escalation-contract.md](contracts/escalation-contract.md)
 - Extractor contract (Sync B): [docs/contracts/extractor-contract.md](contracts/extractor-contract.md)
 
-## Demo UI and frontend
+## Web UI and frontend
 
-The demo is a static frontend served at root `/` (local: `http://localhost:3374/`, production: **<https://aeps.alfares.cz>z>** only). It lists the 50-email dataset which can be edited in memory, allows running triage (single or all), and shows per-stage status with short polling. Polling stops when no emails are running or when a poll request fails. See [README.md](../README.md#demo-50-email-dataset) for full demo usage.
+The Web UI is a static frontend served at root `/` (local: `http://localhost:3374/`, production: **<https://aeps.alfares.cz>z>** only). It lists the 50-email dataset which can be edited in memory, allows running triage (single or all), and shows per-stage status with short polling. Polling stops when no emails are running or when a poll request fails. See [README.md](../README.md#test-dataset-50-emails-and-web-ui) for full usage.
 
 ## Endpoint tests
 

@@ -47,11 +47,11 @@ Every agent outcome must emit at least one event with:
 | All escalation reasons auditable (logged with message_id) | Required |
 | No secrets or PII in event details (only IDs, codes, summaries) | Required |
 
-## 5. Demo and Debug
+## 5. Logs and Debug
 
 | Item | Status |
 | ---- | ------ |
-| Demo UI "See logs…" uses `GET /api/demo/emails/:message_id/logs` | Implemented |
+| Web UI "See logs…" uses `GET /api/emails/:message_id/logs` | Implemented |
 | Backend filters central logging by message_id for that endpoint | Implemented |
 | Failed stages visible in frontend (status failed, error message) | Implemented |
 

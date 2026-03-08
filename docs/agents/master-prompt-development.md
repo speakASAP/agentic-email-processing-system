@@ -6,7 +6,7 @@ Your responsibility is to **implement**, **integrate**, and **deploy** a working
 
 - A **backend service** that runs the Agentic Email Triage workflow end-to-end using the existing `ai-microservice`.
 - A **visual frontend** that shows, per email, the **information flow across AI agents** and the **final triage outcome**.
-- A **demo mode** that processes a fixed **dataset of 50 customer emails** and lets the user inspect each email’s journey.
+- A **test dataset** of 50 customer emails that lets the user inspect each email’s journey through the pipeline.
 
 You **do write code and configuration** (backend, frontend, integration, deployment), but you must do so **strictly according to the existing design, contracts, and project rules**.
 
@@ -14,7 +14,7 @@ You **do write code and configuration** (backend, frontend, integration, deploym
 
 ## 1. Assignment (Implementation Objective)
 
-Implement a **working production demo** of the Agentic Email Processing System for a Deutsche Telekom–oriented business context that:
+Implement a **working production system** for the Agentic Email Processing System for a Deutsche Telekom–oriented business context that:
 
 1. Uses the existing **ai-microservice** (AI Orchestrator and agents) as described in its `README.md`.
 2. Provides a **backend API** that:
@@ -124,7 +124,7 @@ Each email must:
 3. Have a **final category and action** (e.g. route to support queue, ask sales to follow up, escalate, mark as spam).
 4. Be **visually inspectable** in the frontend so that a human can see that each step is correct and understand why.
 
-This demo is meant to **convince stakeholders** that the Agentic system behaves correctly, transparently, and in alignment with Deutsche Telekom’s requirements.
+This system is meant to **convince stakeholders** that the Agentic system behaves correctly, transparently, and in alignment with Deutsche Telekom’s requirements.
 
 ---
 
@@ -172,7 +172,7 @@ Your implementation must deliver:
      - Progress and status must be visible in **real time**: the frontend must be continuously updated so that every stage transition is reflected on screen while processing happens, allowing stakeholders to literally watch work progress.
 
 3. **Demo dataset integration**:
-   - Normalize, if needed, the provided dataset in `docs/sample_intent_dataset.json` (which already contains categorized customer emails such as support, sales, contract, technical, billing, spam/irrelevant, out-of-office, etc.) into a **structured internal format** that matches the **email ingestion contract**, and use it as the single source of truth for the 50-email demo.
+   - Normalize, if needed, the provided dataset in `docs/sample_intent_dataset.json` (which already contains categorized customer emails such as support, sales, contract, technical, billing, spam/irrelevant, out-of-office, etc.) into a **structured internal format** that matches the **email ingestion contract**, and use it as the single source of truth for the 50-email test dataset.
    - Ensure the dataset is:
      - **Reproducible** (checked into the repo in a suitable format, e.g. JSON or fixtures).
      - Easy to process end-to-end with a **single action** (e.g. “Run dataset” button in the UI or CLI).
@@ -189,7 +189,7 @@ Your implementation must deliver:
      - Deployed via the **existing blue/green deployment scripts** scripts/deploy.sh(similar to other services).
    - Document **exact commands** to:
      - Run locally (dev).
-     - Run the demo dataset through the system.
+     - Run the test dataset through the system.
      - Deploy to prod (high-level steps, reusing existing deployment scripts).
 
 ---
@@ -292,7 +292,7 @@ You must **not** contradict these artifacts. If you discover inconsistencies or 
   - Service configuration for nginx (route definitions) as required by `CREATE_SERVICE.md`.
   - Documentation with clear **step-by-step commands** for:
     - Local development run.
-    - Running the 50-email demo.
+    - Running the 50-email test dataset.
     - Deploying to prod using the standard **blue/green** mechanism.
 
 ---
@@ -321,7 +321,7 @@ You must **not** contradict these artifacts. If you discover inconsistencies or 
 
 Your work is considered successful when:
 
-1. **End-to-end demo works**:
+1. **End-to-end flow works**:
    - All 50 emails can be processed through the full pipeline.
    - The system respects the **max 30 items per request** rule.
    - Errors are handled gracefully and logged.
@@ -340,7 +340,7 @@ Your work is considered successful when:
 5. **Documentation is up to date**:
    - Implementation plan markdown shows tasks with ✅ where done.
    - Changes in implementation that affect the five approaches are reflected in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`.
-   - README and integration docs explain how to run the demo and what to look for.
+   - README and integration docs explain how to run the system and what to look for.
 
 ---
 
