@@ -38,8 +38,14 @@ elapsed=$(awk "BEGIN {printf \"%.0f\", ($t1 - $t0) * 1000}")
 if [ "$code" = "200" ] && grep -q '"success":true' /tmp/ae_ingest.json; then
   echo "   HTTP $code  ${elapsed}ms  OK"
   echo "   success: true"
-elif [ "$code" = "503" ] && grep -qE "AI service unavailable|unreachable" /tmp/ae_ingest.json 2>/dev/null; then
-  echo "   HTTP $code  ${elapsed}ms  SKIP (AEPS cannot reach AI — run AEPS on host with AI_SERVICE_URL=$AI_DIRECT for full test)"
+elif [ "$code" = "503" ]; then
+  if grep -q "AI service unreachable" /tmp/ae_ingest.json 2>/dev/null && grep -q "api/email-triage" /tmp/ae_ingest.json 2>/dev/null; then
+    echo "   HTTP $code  ${elapsed}ms  SKIP (AEPS cannot reach AI; mandatory error shape OK)"
+  else
+    echo "   HTTP $code  ${elapsed}ms  FAIL (503 must contain 'AI service unreachable' and 'api/email-triage')"
+    head -c 300 /tmp/ae_ingest.json; echo
+    FAILED=1
+  fi
 else
   echo "   HTTP $code  ${elapsed}ms  FAIL"
   head -c 300 /tmp/ae_ingest.json; echo
@@ -57,8 +63,14 @@ if [ "$code" = "200" ] && grep -q '"success":true' /tmp/ae_triage.json; then
   echo "   success: true"
   grep -o '"intent":"[^"]*"' /tmp/ae_triage.json | head -1
   grep -o '"action":"[^"]*"' /tmp/ae_triage.json | head -1
-elif [ "$code" = "503" ] && grep -qE "AI service unavailable|unreachable" /tmp/ae_triage.json 2>/dev/null; then
-  echo "   HTTP $code  ${elapsed}ms  SKIP (AEPS cannot reach AI — run AEPS on host with AI_SERVICE_URL=$AI_DIRECT for full test)"
+elif [ "$code" = "503" ]; then
+  if grep -q "AI service unreachable" /tmp/ae_triage.json 2>/dev/null && grep -q "api/email-triage" /tmp/ae_triage.json 2>/dev/null; then
+    echo "   HTTP $code  ${elapsed}ms  SKIP (AEPS cannot reach AI; mandatory error shape OK)"
+  else
+    echo "   HTTP $code  ${elapsed}ms  FAIL (503 must contain 'AI service unreachable' and 'api/email-triage')"
+    head -c 400 /tmp/ae_triage.json; echo
+    FAILED=1
+  fi
 else
   echo "   HTTP $code  ${elapsed}ms  FAIL"
   head -c 400 /tmp/ae_triage.json; echo

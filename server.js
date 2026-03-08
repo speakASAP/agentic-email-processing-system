@@ -116,7 +116,8 @@ app.post('/api/ingest', async (req, res) => {
     const status = err.status === 400 ? 400 : 503;
     return res.status(status).json({
       success: false,
-      error: err.status === 400 ? (err.body && err.body.error) || err.message : 'AI service unavailable'
+      error: err.status === 400 ? (err.body && err.body.error) || err.message : 'AI service unavailable',
+      ...(status === 503 && err.message ? { details: { error: err.message } } : {})
     });
   }
 });

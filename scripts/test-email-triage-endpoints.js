@@ -16,6 +16,15 @@ const TRIAGE_TIMEOUT_MS = 60000;
 const INTENT_TAXONOMY = ['support', 'sales', 'contract', 'technical', 'billing', 'spam', 'unknown', 'multi_intent'];
 const ACTION_SET = ['auto_respond', 'route_to_queue', 'escalate'];
 
+/** Mandatory: 503 response must contain AI unreachable error shape (crucial for infrastructure). */
+function assertAiUnreachableError(json, context) {
+  const err = (json && (json.error || (json.details && json.details.error))) || '';
+  const str = typeof err === 'string' ? err : JSON.stringify(err);
+  const hasUnreachable = str.includes('AI service unreachable');
+  const hasApiPath = str.includes('api/email-triage');
+  return hasUnreachable && hasApiPath;
+}
+
 let fetchFn = globalThis.fetch;
 let fetchOpts = { signal: AbortSignal.timeout(TIMEOUT_MS) };
 try {
@@ -115,9 +124,27 @@ async function main() {
 
   if (!aiOk) {
     console.log('');
+    console.log('0b. MANDATORY: 503 error shape when AI unreachable (crucial for infrastructure)');
+    let mandatoryIngest;
+    try {
+      mandatoryIngest = await post('/api/ingest', RAW_EMAIL);
+    } catch (e) {
+      ok('Mandatory ingest 503 (request)', false, e.message || 'request failed');
+      mandatoryIngest = null;
+    }
+    if (mandatoryIngest) {
+      ok('Mandatory ingest returns 503', mandatoryIngest.status === 503, 'status=' + mandatoryIngest.status);
+      const valid = mandatoryIngest.json && assertAiUnreachableError(mandatoryIngest.json, 'ingest');
+      ok('Mandatory 503 error shape (AI service unreachable + api/email-triage)', valid, valid ? '' : (mandatoryIngest.json && (mandatoryIngest.json.error || mandatoryIngest.json.details && mandatoryIngest.json.details.error)) || 'missing');
+      if (!valid || mandatoryIngest.status !== 503) {
+        console.log('  FAIL: AI unreachable response must contain "AI service unreachable" and "api/email-triage".');
+        process.exit(1);
+      }
+    }
+    console.log('');
     console.log('---');
-    console.log('Result: ' + passed + ' passed, ' + failed + ' failed (pipeline skipped — AI unreachable from AEPS)');
-    process.exit(0);
+    console.log('Result: ' + passed + ' passed, ' + failed + ' failed (pipeline skipped — AI unreachable; mandatory 503 check done)');
+    process.exit(failed > 0 ? 1 : 0);
   }
 
   // 1. Ingest
@@ -132,6 +159,11 @@ async function main() {
   }
   if (ingestRes) {
     ok('Ingest HTTP 200', ingestRes.status === 200, 'status=' + ingestRes.status);
+    if (ingestRes.status === 503) {
+      const valid = assertAiUnreachableError(ingestRes.json, 'ingest');
+      ok('Ingest 503 mandatory error shape (AI service unreachable + api/email-triage)', valid, valid ? '' : (ingestRes.json && (ingestRes.json.details && ingestRes.json.details.error || ingestRes.json.error)) || 'missing');
+      if (!valid) process.exit(1);
+    }
     ok('Ingest success', ingestRes.json && ingestRes.json.success === true, ingestRes.json && ingestRes.json.error ? ingestRes.json.error : '');
     ok('Ingest payload', ingestRes.json && ingestRes.json.payload && typeof ingestRes.json.payload.message_id === 'string', '');
   }
@@ -230,6 +262,11 @@ async function main() {
   if (triageRes) {
     ok('Triage HTTP 200', triageRes.status === 200, 'status=' + triageRes.status);
     ok('Triage success', triageRes.json && triageRes.json.success === true, '');
+    if (triageRes.status === 503) {
+      const valid = triageRes.json && assertAiUnreachableError(triageRes.json, 'triage');
+      ok('Triage 503 mandatory error shape (AI service unreachable + api/email-triage)', valid, valid ? '' : (triageRes.json && triageRes.json.error) || 'missing');
+      if (!valid) process.exit(1);
+    }
     ok('Triage intent', triageRes.json && typeof triageRes.json.intent === 'string', triageRes.json && triageRes.json.intent);
     ok('Triage action', triageRes.json && typeof triageRes.json.action === 'string', triageRes.json && triageRes.json.action);
     if (triageRes.json && triageRes.json.action) {
