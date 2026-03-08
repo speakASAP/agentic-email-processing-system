@@ -263,6 +263,16 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
         fi
     fi
 
+    # Canonical frontend is https://aeps.alfares.cz (we never use agentic-email-processing-system.alfares.cz for the app)
+    echo ""
+    echo -e "${BLUE}[INFO] Checking HTTPS availability: https://aeps.alfares.cz/ (canonical frontend, timeout: 5s)${NC}"
+    AEPS_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -k "https://aeps.alfares.cz/" 2>/dev/null || echo "000")
+    if echo "$AEPS_HTTP_CODE" | grep -qE '^[24][0-9][0-9]$'; then
+        echo -e "${GREEN}✅ HTTPS check passed: https://aeps.alfares.cz/ (HTTP $AEPS_HTTP_CODE - service reachable)${NC}"
+    else
+        echo -e "${YELLOW}⚠️  HTTPS check failed or timeout for https://aeps.alfares.cz/ (HTTP $AEPS_HTTP_CODE) — verify cert and nginx config.${NC}"
+    fi
+
     # Check that AEPS container can reach ai-microservice (required for demo/triage to work)
     AEPS_CONTAINER="agentic-email-processing-system-${ACTIVE_COLOR}"
     if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${AEPS_CONTAINER}$"; then

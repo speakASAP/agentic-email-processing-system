@@ -343,6 +343,9 @@ app.get('/api/demo/emails/:message_id', (req, res) => {
 });
 
 // Demo: fetch logs for this email (message_id) from central logging service for "See logs..." in GUI
+// Query: ?source=memory = return only in-memory logs immediately (no central fetch). Omit for merged logs.
+const LOGS_CENTRAL_TIMEOUT_MS = Math.min(10000, Math.max(2000, parseInt(process.env.LOGS_CENTRAL_TIMEOUT_MS || '4000', 10) || 4000));
+
 app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
   demoDataset.ensureLoaded();
   const message_id = req.params.message_id;
@@ -352,17 +355,20 @@ app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
   const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || '';
   const SERVICE_NAME = process.env.SERVICE_NAME || 'agentic-email-processing-system';
   const limit = Math.min(Number(req.query.limit) || 300, 500);
+  const sourceMemoryOnly = (req.query.source || '').toLowerCase() === 'memory';
 
   const inMemory = demoLogBuffer.get(String(message_id)) || [];
-  if (!LOGGING_SERVICE_URL) {
-    const sorted = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-    return res.json({ logs: sorted, message: 'Logging service not configured; showing in-memory progress only' });
+  const sortedMemory = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+
+  if (sourceMemoryOnly || !LOGGING_SERVICE_URL) {
+    const message = sourceMemoryOnly ? undefined : 'Logging service not configured; showing in-memory progress only';
+    return res.json({ logs: sortedMemory, message });
   }
 
   const base = LOGGING_SERVICE_URL.replace(/\/$/, '');
   const queryUrl = `${base}/api/logs/query?service=${encodeURIComponent(SERVICE_NAME)}&limit=${limit}`;
   try {
-    const response = await fetch(queryUrl, { signal: AbortSignal.timeout(10000) });
+    const response = await fetch(queryUrl, { signal: AbortSignal.timeout(LOGS_CENTRAL_TIMEOUT_MS) });
     if (!response.ok) {
       logger.error('Logs query failed', { status: response.status, message_id });
       const merged = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
@@ -370,10 +376,17 @@ app.get('/api/demo/emails/:message_id/logs', async (req, res) => {
     }
     const data = await response.json();
     const all = (data && data.data && Array.isArray(data.data)) ? data.data : [];
-    const fromService = all.filter((entry) => {
-      const meta = entry.metadata || {};
-      return String(meta.message_id || '') === String(message_id);
-    });
+    const fromService = all
+      .filter((entry) => {
+        const meta = entry.metadata || {};
+        return String(meta.message_id || '') === String(message_id);
+      })
+      .map((entry) => ({
+        timestamp: entry.timestamp || entry.ts,
+        level: entry.level || entry.severity || 'info',
+        message: entry.message || entry.msg || '',
+        metadata: entry.metadata || {}
+      }));
     const merged = [...inMemory, ...fromService].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
     return res.json({ logs: merged });
   } catch (err) {

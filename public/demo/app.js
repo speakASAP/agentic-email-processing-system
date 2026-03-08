@@ -75,8 +75,15 @@ function updateEmail(id, payload) {
   });
 }
 
-function fetchDemoLogs(messageId) {
-  return fetchJson(`${API}/emails/${encodeURIComponent(messageId)}/logs`).then(data => data.logs || []);
+/** @param {string} messageId
+ *  @param {{ sourceMemory?: boolean }} [opts] - sourceMemory: true = only in-memory (faster). Omit for merged with central.
+ *  @returns {Promise<{ logs: Array<{timestamp?: string, level?: string, message?: string, metadata?: object}>, error?: string }>} */
+function fetchDemoLogs(messageId, opts = {}) {
+  const qs = opts.sourceMemory ? '?source=memory' : '';
+  return fetchJson(`${API}/emails/${encodeURIComponent(messageId)}/logs${qs}`).then((data) => ({
+    logs: data.logs || [],
+    error: data.error || undefined
+  }));
 }
 
 function getSettings() {
@@ -290,17 +297,18 @@ function fillStageBody(rec, st, bodyEl, messageId) {
       }).join('') : '<span class="logs-empty">No log lines for this email.</span>';
     } else {
       logsContent.textContent = 'Loading…';
-      fetchDemoLogs(messageId).then((logs) => {
+      fetchDemoLogs(messageId).then(({ logs, error }) => {
         cachedLogs = logs;
         cachedLogsMessageId = messageId;
         if (logsContent.textContent === 'Loading…') {
-          logsContent.innerHTML = logs.length ? logs.map((entry) => {
+          const errHint = error ? `<span class="logs-empty">Central logging: ${escapeHtml(error)}</span>` : '';
+          logsContent.innerHTML = errHint + (logs.length ? logs.map((entry) => {
             const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
             const level = escapeHtml(entry.level || '');
             const msg = escapeHtml(entry.message || '');
             const meta = entry.metadata && Object.keys(entry.metadata).length ? escapeHtml(JSON.stringify(entry.metadata, null, 2)) : '';
             return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
-          }).join('') : '<span class="logs-empty">No log lines for this email.</span>';
+          }).join('') : '<span class="logs-empty">No log lines for this email.</span>');
         }
       }).catch((err) => {
         logsContent.innerHTML = `<span class="logs-empty">Failed to load logs: ${escapeHtml(err.message)}</span>`;
@@ -478,28 +486,39 @@ function onEditSave() {
     .finally(() => { if (btn) btn.disabled = false; });
 }
 
+function renderLogsContent(content, logs, error) {
+  const errorHint = error ? `<p class="logs-empty logs-error">Central logging unavailable: ${escapeHtml(error)}</p>` : '';
+  if (!logs.length) {
+    content.innerHTML = errorHint + '<span class="logs-empty">No log lines found for this email. Run triage first or check LOGGING_SERVICE_URL.</span>';
+    return;
+  }
+  content.innerHTML = errorHint + logs.map((entry) => {
+    const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
+    const level = escapeHtml(entry.level || '');
+    const msg = escapeHtml(entry.message || '');
+    const meta = entry.metadata && Object.keys(entry.metadata).length
+      ? escapeHtml(JSON.stringify(entry.metadata, null, 2))
+      : '';
+    return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
+  }).join('');
+}
+
 // --- Logs modal: show every log line for this email (micro task) ---
+// Load in-memory first for fast display, then merge central logs when ready.
 function openLogsModal(messageId) {
   const modal = $('logs-modal');
   const content = $('logs-content');
   if (!modal || !content) return;
   content.textContent = 'Loading…';
   modal.removeAttribute('hidden');
-  fetchDemoLogs(messageId)
-    .then((logs) => {
-      if (!logs.length) {
-        content.innerHTML = '<span class="logs-empty">No log lines found for this email. Run triage first or check LOGGING_SERVICE_URL.</span>';
-        return;
-      }
-      content.innerHTML = logs.map((entry) => {
-        const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
-        const level = escapeHtml(entry.level || '');
-        const msg = escapeHtml(entry.message || '');
-        const meta = entry.metadata && Object.keys(entry.metadata).length
-          ? escapeHtml(JSON.stringify(entry.metadata, null, 2))
-          : '';
-        return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
-      }).join('');
+  fetchDemoLogs(messageId, { sourceMemory: true })
+    .then(({ logs, error }) => {
+      renderLogsContent(content, logs, error);
+      fetchDemoLogs(messageId).then(({ logs: logsFull, error: errFull }) => {
+        if (!$('logs-modal')?.hasAttribute('hidden') && content.parentElement && selectedId === messageId) {
+          renderLogsContent(content, logsFull, errFull);
+        }
+      }).catch(() => {});
     })
     .catch((err) => {
       content.innerHTML = `<span class="logs-empty">Failed to load logs: ${escapeHtml(err.message)}</span>`;
