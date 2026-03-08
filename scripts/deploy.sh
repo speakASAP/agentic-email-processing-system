@@ -266,9 +266,10 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo -e "${BLUE}Running post-deploy tests (endpoints: health, ingest, classify, extract, decide, triage + mandatory 503 error shape)...${NC}"
     cd "$PROJECT_ROOT"
     TEST_EXIT=0
+    # Canonical frontend is https://aeps.alfares.cz — verify that domain so we know production works
     if [ -n "${DOMAIN:-}" ]; then
-        export AEPS_URL="https://${DOMAIN}"
-        echo "  Using AEPS_URL=$AEPS_URL"
+        export AEPS_URL="${AEPS_TEST_URL:-https://aeps.alfares.cz}"
+        echo "  Using AEPS_URL=$AEPS_URL (canonical frontend)"
     else
         export AEPS_URL="${AEPS_URL:-http://localhost:3374}"
     fi
@@ -282,7 +283,7 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
             if node scripts/test-email-triage-endpoints.js; then
                 echo -e "${GREEN}✓ All endpoint tests passed at $AEPS_URL${NC}"
                 if [ -n "${DOMAIN:-}" ]; then
-                    echo -e "${YELLOW}  Note: Public URL https://${DOMAIN} returned an error. Check firewall/WAF if external access is required.${NC}"
+                    echo -e "${YELLOW}  Note: https://aeps.alfares.cz returned an error. Check firewall/WAF if external access is required.${NC}"
                 fi
                 TEST_PASSED=1
                 break

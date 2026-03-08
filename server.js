@@ -14,6 +14,21 @@ const { runTriagePipeline } = require('./lib/triage_pipeline');
 const demoDataset = require('./lib/demo_dataset');
 
 const app = express();
+
+// CORS: allow same-domain (aeps.alfares.cz, *.alfares.cz, localhost) so no 403 for same-ecosystem requests
+const CORS_ORIGIN_REGEX = /^https?:\/\/([a-z0-9-]+\.)?alfares\.cz$/;
+app.use((req, res, next) => {
+  const origin = req.get('Origin');
+  if (origin && (origin.startsWith('http://localhost') || origin.startsWith('https://localhost') || origin.startsWith('http://127.0.0.1') || origin.startsWith('https://127.0.0.1') || CORS_ORIGIN_REGEX.test(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 const PORT = process.env.PORT || 3374;
