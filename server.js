@@ -500,8 +500,10 @@ app.post('/api/emails/:message_id/run', async (req, res) => {
           }
           if (data.summary != null) meta.summary = data.summary;
         }
-        pushRunLog(message_id, 'info', `Stage completed: ${stage}`, meta);
-        logger.info('Triage run stage completed', { message_id, stage, finished_at: finishedAt, ...(stage === 'classify' && data ? { intent: data.intent, confidence: data.confidence, raw_scores: data.raw_scores } : {}), ...(stage === 'extract' && data && data.entities ? { product_refs_count: (data.entities.product_refs || []).length, amounts_count: (data.entities.amounts || []).length, dates_count: (data.entities.dates || []).length, contract_refs_count: (data.entities.contract_refs || []).length, summary: data.summary } : {}) });
+        const modelSuffix = (stage === 'classify' || stage === 'decide') && data && data.model_used
+          ? ` — model: ${data.model_used}` : '';
+        pushRunLog(message_id, 'info', `Stage completed: ${stage}${modelSuffix}`, meta);
+        logger.info('Triage run stage completed', { message_id, stage, finished_at: finishedAt, ...(stage === 'classify' && data ? { intent: data.intent, confidence: data.confidence, raw_scores: data.raw_scores, model_used: data.model_used } : {}), ...(stage === 'decide' && data ? { model_used: data.model_used } : {}), ...(stage === 'extract' && data && data.entities ? { product_refs_count: (data.entities.product_refs || []).length, amounts_count: (data.entities.amounts || []).length, dates_count: (data.entities.dates || []).length, contract_refs_count: (data.entities.contract_refs || []).length, summary: data.summary } : {}) });
       } else {
         pushRunLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
         logger.error('Triage run stage failed', { message_id, stage, error: (data && data.error) || 'unknown', finished_at: finishedAt });
@@ -588,7 +590,9 @@ async function runOneEmail(message_id, rec, runOptions = {}) {
         }
         if (data.summary != null) meta.summary = data.summary;
       }
-      pushRunLog(message_id, 'info', `Stage completed: ${stage}`, meta);
+      const modelSuffix = (stage === 'classify' || stage === 'decide') && data && data.model_used
+        ? ` — model: ${data.model_used}` : '';
+      pushRunLog(message_id, 'info', `Stage completed: ${stage}${modelSuffix}`, meta);
     } else {
       pushRunLog(message_id, 'error', `Stage failed: ${stage}`, { stage, finished_at: finishedAt, progress: `${stage} failed`, error: (data && data.error) || 'unknown' });
     }
