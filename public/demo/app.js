@@ -186,10 +186,28 @@ function getStageResponse(st) {
   const d = st.data || {};
   const status = d.status || 'pending';
   if (status !== 'success' && status !== 'failed') return null;
-  if (st.key === 'ingest' && d.payload) return d.payload;
-  if (st.key === 'classify') return { intent: d.intent, confidence: d.confidence, raw_scores: d.raw_scores != null && typeof d.raw_scores === 'object' ? d.raw_scores : {} };
-  if (st.key === 'extract') return { message_id: d.message_id, entities: d.entities != null ? d.entities : { product_refs: [], amounts: [], dates: [], contract_refs: [] }, summary: d.summary };
-  if (st.key === 'decide') return { action: d.action, queue: d.queue, escalation_reason: d.escalation_reason };
+  if (st.key === 'ingest' && d.payload) {
+    const out = typeof d.payload === 'object' && d.payload !== null ? { ...d.payload } : {};
+    if (d.model_used != null) out.model_used = d.model_used;
+    return out;
+  }
+  if (st.key === 'classify') {
+    const out = { intent: d.intent, confidence: d.confidence, raw_scores: d.raw_scores != null && typeof d.raw_scores === 'object' ? d.raw_scores : {} };
+    if (d.model_used != null) out.model_used = d.model_used;
+    if (d.llm_output != null) out.llm_output = d.llm_output;
+    return out;
+  }
+  if (st.key === 'extract') {
+    const out = { message_id: d.message_id, entities: d.entities != null ? d.entities : { product_refs: [], amounts: [], dates: [], contract_refs: [] }, summary: d.summary };
+    if (d.model_used != null) out.model_used = d.model_used;
+    return out;
+  }
+  if (st.key === 'decide') {
+    const out = { action: d.action, queue: d.queue, escalation_reason: d.escalation_reason };
+    if (d.model_used != null) out.model_used = d.model_used;
+    if (d.llm_output != null) out.llm_output = d.llm_output;
+    return out;
+  }
   return null;
 }
 
@@ -221,6 +239,7 @@ function renderDetail(rec) {
         </div>
         <div class="stage-body${isExpanded ? '' : ' stage-body-collapsed'}" data-stage="${st.key}">
           ${d.error ? `<div class="error">${escapeHtml(d.error)}</div>` : ''}
+          ${(st.key === 'ingest' || st.key === 'extract') && d.model_used ? `<div class="stage-details"><div class="stage-label">Model used</div><div class="classify-details">${escapeHtml(d.model_used)}</div></div>` : ''}
           ${st.key === 'classify' ? `<div class="stage-details"><div class="stage-label">Details</div><div class="classify-details">Intent: ${escapeHtml(String(d.intent != null ? d.intent : '—'))}, Confidence: ${d.confidence != null ? Number(d.confidence).toFixed(2) : '—'}${d.raw_scores && typeof d.raw_scores === 'object' && Object.keys(d.raw_scores).length ? '. Raw scores: ' + Object.entries(d.raw_scores).map(([k, v]) => k + '=' + Number(v).toFixed(2)).join(', ') : ''}</div>${d.model_used ? `<div class="stage-label">LLM model</div><div class="classify-details">${escapeHtml(d.model_used)}</div>` : ''}${d.llm_output ? `<div class="stage-label">LLM output</div><pre class="stage-pre">${escapeHtml(JSON.stringify(d.llm_output, null, 2))}</pre>` : ''}</div>` : ''}
           ${st.key === 'decide' && (d.model_used || d.llm_output) ? `<div class="stage-details">${d.model_used ? `<div class="stage-label">LLM model</div><div class="classify-details">${escapeHtml(d.model_used)}</div>` : ''}${d.llm_output ? `<div class="stage-label">LLM output</div><pre class="stage-pre">${escapeHtml(JSON.stringify(d.llm_output, null, 2))}</pre>` : ''}</div>` : ''}
           ${st.key === 'extract' && d.entities ? (function(e){ if (!e || typeof e !== 'object') return ''; const empty = (!e.product_refs || e.product_refs.length===0) && (!e.amounts || e.amounts.length===0) && (!e.dates || e.dates.length===0) && (!e.contract_refs || e.contract_refs.length===0); return empty ? '<div class="stage-extract-note">No product refs, amounts, dates or contract refs found (extractor looks for these patterns in the email).</div>' : ''; })(d.entities) : ''}
