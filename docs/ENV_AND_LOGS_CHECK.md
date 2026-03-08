@@ -301,4 +301,48 @@ Search logs for these to trace where the parameter is set or lost:
 4. In "See logs…" for an email, confirm:
    - `Stage completed: classify — model: <OpenRouter model>` (e.g. `openai/gpt-oss-20b:free` or `google/gemini-2.0-flash-exp:free`).
    - `Stage completed: decide — model: <OpenRouter model>`.
-5. If you see `model: rule-based` or a 503/ERROR, follow the log points above and check `FREE_AI_SERVICE_URL` and free-ai-service reachability.
+5. If you see `model: rule-based` or a 503/ERROR, follow the log points above and the troubleshooting section below.
+
+---
+
+## 7. Troubleshooting: "LLM requested but classifier/decider returned rule-based"
+
+This error means the UI sent `use_llm: true` but the ai-orchestrator either had **FREE_AI_SERVICE_URL** unset or the call to free-ai-service failed (timeout, 5xx, or exception), so it fell back to rule-based and AEPS/ai-orchestrator then report the mismatch.
+
+### On production (ssh statex)
+
+1. **Set FREE_AI_SERVICE_URL in ai-microservice .env**  
+   In `~/ai-microservice/.env` (or the path used on prod), ensure:
+   ```bash
+   FREE_AI_SERVICE_URL=http://ai-microservice-free-ai-service-green:3386
+   ```
+   (Use `-blue` if the active stack is blue.) If you use a single compose file without blue/green, use the container name from that compose (e.g. `http://ai-microservice-free-ai-service:3386`).
+
+2. **Set OPENROUTER_API_KEY in ai-microservice .env**  
+   free-ai-service needs this to call OpenRouter. Add (or uncomment):
+   ```bash
+   OPENROUTER_API_KEY=sk-or-...
+   ```
+
+3. **Verify orchestrator env and reachability**
+   ```bash
+   docker exec ai-microservice-orchestrator-green printenv FREE_AI_SERVICE_URL
+   docker exec ai-microservice-orchestrator-green curl -sf --connect-timeout 5 http://ai-microservice-free-ai-service-green:3386/health
+   ```
+   The health response should include `"healthy"`. If FREE_AI_SERVICE_URL is empty, restart the stack after fixing .env (compose passes it from .env or from the `environment` block).
+
+4. **Check free-ai-service logs**
+   ```bash
+   docker logs ai-microservice-free-ai-service-green --tail 100
+   ```
+   Look for OPENROUTER_API_KEY SET/NOT SET, connection errors, or 5xx from OpenRouter.
+
+5. **Redeploy ai-microservice**  
+   After editing .env, redeploy so the orchestrator and free-ai-service get the new env:
+   ```bash
+   cd ~/nginx-microservice && ./scripts/blue-green/deploy-smart.sh ai-microservice
+   ```
+   (Or the exact deploy command you use for ai-microservice.)
+
+6. **Re-test from AEPS**  
+   Open https://aeps.alfares.cz/ (canonical URL), set Classifier and Decider to **AI (LLM)**, Clear all, Run all 50. Check "See logs…" for an email: you should see `model: <OpenRouter model>` for classify and decide, not `rule-based`.
