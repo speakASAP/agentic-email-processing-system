@@ -62,6 +62,16 @@ A **test dataset** of 50 emails is used to verify the full pipeline. The Web UI 
 
 **After deployment:** Run `./scripts/deploy.sh`; when the aeps.alfares.cz certificate is present (or symlinked from wildcard), **<https://aeps.alfares.cz>** is installed and available. The app is served at root `/`.
 
+### Classifier/Decider show "rule-based" instead of LLM model
+
+When you set **Classifier** and **Decider** to **AI (LLM)** but the stage response shows **model_used: "rule-based"**, the ai-microservice is not using OpenRouter. Ensure:
+
+1. **ai-microservice** has **FREE_AI_SERVICE_URL** set in .env (e.g. in Docker it is set by docker-compose to the free-ai-service container URL).
+2. **free-ai-service** can reach OpenRouter (OPENROUTER_API_KEY and OPENROUTER_MODEL in ai-microservice/.env free-ai-service .env).
+3. This app sends the current dropdown choice with every run; the server also keeps the last saved choice (PUT /api/settings when you change the dropdown). If the UI shows AI (LLM) and you click Run, the request includes `useLlmClassifier: true` and `useLlmDecider: true`.
+
+Check ai-microservice logs for "Email-triage LLM classify failed, falling back to rule-based" or "use_llm=True but FREE_AI_SERVICE_URL is not set".
+
 ## Port and port range
 
 Ports use the **33xx shared microservice range**, aligned with root [README.md](../README.md) (3371–3373 = auth-microservice; 3380+ = ai-microservice). This service uses **3374 (blue)** and **3375 (green)** to avoid conflict:

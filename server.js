@@ -321,10 +321,17 @@ app.get('/api/settings', (req, res) => {
   res.json(getSettings());
 });
 
+function coerceBool(value) {
+  if (value === true || value === 1 || value === 'true' || value === '1' || value === 'yes') return true;
+  if (value === false || value === 0 || value === 'false' || value === '0' || value === 'no' || value === '') return false;
+  return undefined;
+}
 app.put('/api/settings', (req, res) => {
   const body = req.body || {};
-  if (typeof body.useLlmClassifier === 'boolean') analysisMode.useLlmClassifier = body.useLlmClassifier;
-  if (typeof body.useLlmDecider === 'boolean') analysisMode.useLlmDecider = body.useLlmDecider;
+  const c = coerceBool(body.useLlmClassifier);
+  const d = coerceBool(body.useLlmDecider);
+  if (c !== undefined) analysisMode.useLlmClassifier = c;
+  if (d !== undefined) analysisMode.useLlmDecider = d;
   logger.info('Settings updated', getSettings());
   res.json(getSettings());
 });
@@ -446,14 +453,23 @@ app.post('/api/emails/:message_id/run', async (req, res) => {
   const rec = emailDataset.get(message_id);
   if (!rec) return res.status(404).json({ error: 'Email not found' });
   const body = req.body || {};
-  const runOptions = {};
+  logger.info('Run one request body (use_llm flow)', {
+    message_id,
+    body_keys: Object.keys(body),
+    body_useLlmClassifier: body.useLlmClassifier,
+    body_useLlmDecider: body.useLlmDecider,
+    body_useLlmClassifier_type: typeof body.useLlmClassifier,
+    body_useLlmDecider_type: typeof body.useLlmDecider
+  });
+  const saved = getSettings();
+  const runOptions = { useLlmClassifier: saved.useLlmClassifier, useLlmDecider: saved.useLlmDecider };
   if (body.useLlmClassifier !== undefined && body.useLlmClassifier !== null) {
     runOptions.useLlmClassifier = Boolean(body.useLlmClassifier === true || body.useLlmClassifier === 'true' || body.useLlmClassifier === 1);
   }
   if (body.useLlmDecider !== undefined && body.useLlmDecider !== null) {
     runOptions.useLlmDecider = Boolean(body.useLlmDecider === true || body.useLlmDecider === 'true' || body.useLlmDecider === 1);
   }
-  logger.info('Run one requested', { message_id, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider, from_body: { useLlmClassifier: body.useLlmClassifier, useLlmDecider: body.useLlmDecider } });
+  logger.info('Run one requested', { message_id, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider, saved_useLlmClassifier: saved.useLlmClassifier, saved_useLlmDecider: saved.useLlmDecider });
   // Reset stages to pending then run in background so UI can poll
   emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_PENDING);
   for (const stage of emailDataset.STAGES) {
@@ -492,10 +508,22 @@ app.post('/api/emails/:message_id/run', async (req, res) => {
           meta.raw_scores = data.raw_scores;
           if (data.model_used != null) meta.model_used = data.model_used;
           if (data.llm_output != null) meta.llm_output = data.llm_output;
+          const modelUsed = data.model_used == null ? '' : String(data.model_used).trim().toLowerCase();
+          const isRuleBased = modelUsed === '' || modelUsed === 'rule-based';
+          if (runOptions.useLlmClassifier === true && isRuleBased) {
+            pushRunLog(message_id, 'error', 'LLM requested but classifier returned rule-based or empty model_used', { stage: 'classify', point: 'server_onStageEnd', useLlmClassifier: runOptions.useLlmClassifier, model_used: data.model_used });
+            logger.error('LLM parameter lost or ai-microservice fallback: classifier returned rule-based/empty when useLlmClassifier=true', { message_id, point: 'server_onStageEnd_classify', useLlmClassifier: runOptions.useLlmClassifier, model_used: data.model_used });
+          }
         }
         if (stage === 'decide' && data) {
           if (data.model_used != null) meta.model_used = data.model_used;
           if (data.llm_output != null) meta.llm_output = data.llm_output;
+          const modelUsed = data.model_used == null ? '' : String(data.model_used).trim().toLowerCase();
+          const isRuleBased = modelUsed === '' || modelUsed === 'rule-based';
+          if (runOptions.useLlmDecider === true && isRuleBased) {
+            pushRunLog(message_id, 'error', 'LLM requested but decider returned rule-based or empty model_used', { stage: 'decide', point: 'server_onStageEnd', useLlmDecider: runOptions.useLlmDecider, model_used: data.model_used });
+            logger.error('LLM parameter lost or ai-microservice fallback: decider returned rule-based/empty when useLlmDecider=true', { message_id, point: 'server_onStageEnd_decide', useLlmDecider: runOptions.useLlmDecider, model_used: data.model_used });
+          }
         }
         if (stage === 'extract' && data) {
           const ent = data.entities;
@@ -519,6 +547,7 @@ app.post('/api/emails/:message_id/run', async (req, res) => {
       if (!ok) emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_FAILED);
     };
     const options = Object.keys(runOptions).length ? runOptions : getSettings();
+    logger.info('Triage pipeline options (run one)', { message_id, options, runOptions_keys: Object.keys(runOptions), useLlmClassifier: options.useLlmClassifier, useLlmDecider: options.useLlmDecider });
     try {
       const result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, options);
       const finishedAt = new Date().toISOString();
@@ -550,6 +579,7 @@ const DEFAULT_RUN_ALL_CONCURRENCY = 5;
 
 async function runOneEmail(message_id, rec, runOptions = {}) {
   const startedAt = new Date().toISOString();
+  logger.info('runOneEmail options (use_llm flow)', { message_id, runOptions_useLlmClassifier: runOptions.useLlmClassifier, runOptions_useLlmDecider: runOptions.useLlmDecider, runOptions_keys: Object.keys(runOptions) });
   pushRunLog(message_id, 'info', 'Triage run started', { started_at: startedAt, progress: 'started', useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
   logger.info('Triage run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
 
@@ -582,10 +612,20 @@ async function runOneEmail(message_id, rec, runOptions = {}) {
         meta.raw_scores = data.raw_scores;
         if (data.model_used != null) meta.model_used = data.model_used;
         if (data.llm_output != null) meta.llm_output = data.llm_output;
+        const _mu = data.model_used == null ? '' : String(data.model_used).trim().toLowerCase();
+        if (runOptions.useLlmClassifier === true && (_mu === '' || _mu === 'rule-based')) {
+          pushRunLog(message_id, 'error', 'LLM requested but classifier returned rule-based or empty model_used', { stage: 'classify', point: 'runOneEmail_onStageEnd', useLlmClassifier: runOptions.useLlmClassifier, model_used: data.model_used });
+          logger.error('LLM parameter lost or ai-microservice fallback: classifier returned rule-based/empty when useLlmClassifier=true', { message_id, point: 'runOneEmail_onStageEnd_classify', useLlmClassifier: runOptions.useLlmClassifier, model_used: data.model_used });
+        }
       }
       if (stage === 'decide' && data) {
         if (data.model_used != null) meta.model_used = data.model_used;
         if (data.llm_output != null) meta.llm_output = data.llm_output;
+        const _mu = data.model_used == null ? '' : String(data.model_used).trim().toLowerCase();
+        if (runOptions.useLlmDecider === true && (_mu === '' || _mu === 'rule-based')) {
+          pushRunLog(message_id, 'error', 'LLM requested but decider returned rule-based or empty model_used', { stage: 'decide', point: 'runOneEmail_onStageEnd', useLlmDecider: runOptions.useLlmDecider, model_used: data.model_used });
+          logger.error('LLM parameter lost or ai-microservice fallback: decider returned rule-based/empty when useLlmDecider=true', { message_id, point: 'runOneEmail_onStageEnd_decide', useLlmDecider: runOptions.useLlmDecider, model_used: data.model_used });
+        }
       }
       if (stage === 'extract' && data) {
         const ent = data.entities;
@@ -608,6 +648,7 @@ async function runOneEmail(message_id, rec, runOptions = {}) {
   };
 
   const options = Object.keys(runOptions).length ? runOptions : getSettings();
+  logger.info('runOneEmail pipeline options (use_llm flow)', { message_id, options_useLlmClassifier: options.useLlmClassifier, options_useLlmDecider: options.useLlmDecider });
   let result;
   let pipelineErr = null;
   try {
@@ -662,19 +703,27 @@ app.post('/api/run-all', async (req, res) => {
   emailDataset.ensureLoaded();
   const ids = emailDataset.getMessageIds();
   const body = req.body || {};
+  logger.info('Run-all request body (use_llm flow)', {
+    body_keys: Object.keys(body),
+    body_useLlmClassifier: body.useLlmClassifier,
+    body_useLlmDecider: body.useLlmDecider,
+    body_useLlmClassifier_type: typeof body.useLlmClassifier,
+    body_useLlmDecider_type: typeof body.useLlmDecider,
+    count: ids.length
+  });
   const raw = body && (typeof body.concurrency === 'number' || typeof body.concurrency === 'string') ? body.concurrency : null;
   const requested = raw != null ? parseInt(raw, 10) : null;
   const defaultConcurrency = Math.max(1, parseInt(process.env.DEMO_RUN_ALL_CONCURRENCY || String(DEFAULT_RUN_ALL_CONCURRENCY), 10));
   const concurrency = Math.min(ids.length, Math.max(1, (!isNaN(requested) && requested >= 1 ? requested : defaultConcurrency)));
-  const runAllOptions = {};
-  // Coerce so UI choice is always propagated even if sent as string "true"/"false" or 1/0
+  const saved = getSettings();
+  const runAllOptions = { useLlmClassifier: saved.useLlmClassifier, useLlmDecider: saved.useLlmDecider };
   if (body.useLlmClassifier !== undefined && body.useLlmClassifier !== null) {
     runAllOptions.useLlmClassifier = Boolean(body.useLlmClassifier === true || body.useLlmClassifier === 'true' || body.useLlmClassifier === 1);
   }
   if (body.useLlmDecider !== undefined && body.useLlmDecider !== null) {
     runAllOptions.useLlmDecider = Boolean(body.useLlmDecider === true || body.useLlmDecider === 'true' || body.useLlmDecider === 1);
   }
-  logger.info('Run-all requested', { useLlmClassifier: runAllOptions.useLlmClassifier, useLlmDecider: runAllOptions.useLlmDecider, from_body: { useLlmClassifier: body.useLlmClassifier, useLlmDecider: body.useLlmDecider }, count: ids.length, concurrency });
+  logger.info('Run-all requested', { useLlmClassifier: runAllOptions.useLlmClassifier, useLlmDecider: runAllOptions.useLlmDecider, saved_useLlmClassifier: saved.useLlmClassifier, saved_useLlmDecider: saved.useLlmDecider, count: ids.length, concurrency });
   // runAllOptions (or getSettings() when empty) passed to each run → use_llm to ai-microservice → OpenRouter when true
   res.status(202).json({ accepted: true, count: ids.length, concurrency });
 
