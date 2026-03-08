@@ -119,6 +119,22 @@ Example (local): `curl -s http://localhost:3374/health | jq .`
 
 API responses allow cross-origin requests from `*.alfares.cz`, `localhost`, and `127.0.0.1` so that browser calls from https://aeps.alfares.cz (or other alfares.cz subdomains) do not get 403. Same-origin requests do not require CORS; this covers cross-subdomain use (e.g. a frontend on another subdomain calling this API).
 
+### Troubleshooting: AI service timeout
+
+If you see **"AI service unreachable … The operation was aborted due to timeout"** (or similar), the call from AEPS to `AI_SERVICE_URL` (e.g. `http://ai-microservice:3380`) is failing. Check logs for `cause_code`:
+
+| `cause_code` | Meaning | What to do |
+|--------------|---------|------------|
+| `ENOTFOUND` | Hostname not resolved | AEPS and ai-microservice must use the same Docker network (`nginx-network`); ensure ai-microservice is deployed and has alias `ai-microservice`. |
+| `ECONNREFUSED` | Orchestrator not listening | Start or restart ai-microservice; confirm its healthcheck passes. |
+| `ETIMEDOUT` | Connect or read took too long | Check ai-orchestrator logs for slow/failing ingest; ensure traffic is switched only after orchestrator healthcheck has passed (avoids cold-start timeouts). |
+
+**From the server:** Run connectivity from inside the AEPS container:
+
+- `docker exec agentic-email-processing-system-green node /app/scripts/check-ai-incontainer.js` (or `-blue`)
+
+If that succeeds but demo still times out, the orchestrator may be overloaded or the ingest endpoint may be slow; check ai-orchestrator and ingest logs.
+
 ## Testing
 
 Tests verify that the **AI LLM service is accessible** and that all **Ingest → Classify → Extract → Decide** endpoints (and full triage) respond correctly.
