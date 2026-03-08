@@ -263,6 +263,37 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
         fi
     fi
     echo ""
+    echo -e "${BLUE}Running post-deploy tests (endpoints: health, ingest, classify, extract, decide, triage + mandatory 503 error shape)...${NC}"
+    cd "$PROJECT_ROOT"
+    TEST_EXIT=0
+    if [ -n "${DOMAIN:-}" ]; then
+        export AEPS_URL="https://${DOMAIN}"
+        echo "  Using AEPS_URL=$AEPS_URL"
+    else
+        export AEPS_URL="${AEPS_URL:-http://localhost:3374}"
+    fi
+    if node scripts/test-email-triage-endpoints.js; then
+        echo -e "${GREEN}✓ All endpoint tests passed.${NC}"
+    else
+        echo -e "${YELLOW}  Public/local URL failed; trying localhost (blue 3374, green 3375)...${NC}"
+        TEST_PASSED=0
+        for port in 3374 3375; do
+            export AEPS_URL="http://localhost:${port}"
+            if node scripts/test-email-triage-endpoints.js; then
+                echo -e "${GREEN}✓ All endpoint tests passed at $AEPS_URL${NC}"
+                if [ -n "${DOMAIN:-}" ]; then
+                    echo -e "${YELLOW}  Note: Public URL https://${DOMAIN} returned an error. Check firewall/WAF if external access is required.${NC}"
+                fi
+                TEST_PASSED=1
+                break
+            fi
+        done
+        if [ "$TEST_PASSED" = "0" ]; then
+            TEST_EXIT=1
+            echo -e "${RED}✗ One or more endpoint tests failed (tried AEPS_URL and localhost:3374/3375).${NC}"
+        fi
+    fi
+    echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║   ✅ Agentic Email Processing System deployment completed successfully!      ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
@@ -273,7 +304,7 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo "Check status with:"
     echo "  cd $NGINX_MICROSERVICE_PATH"
     echo "  ./scripts/status-all-services.sh"
-    exit 0
+    exit "$TEST_EXIT"
 else
     TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")
     echo ""
