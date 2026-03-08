@@ -67,7 +67,8 @@ echo -e "${BLUE}║         Agentic Email Processing System — Production Deplo
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-SERVICE_NAME="agentic-email-processing-system"
+# SERVICE_NAME: passed to deploy-smart.sh (registry key). DOMAIN: used for main symlink and frontend config.
+SERVICE_NAME="${SERVICE_NAME:-agentic-email-processing-system}"
 
 # Detect nginx-microservice path
 NGINX_MICROSERVICE_PATH=""
@@ -119,9 +120,11 @@ echo ""
 PORT_BLUE="${PORT_BLUE:-3374}"
 PORT_GREEN="${PORT_GREEN:-3375}"
 
+# Container names from docker-compose (unchanged by SERVICE_NAME in .env)
+CONTAINER_BASE="${CONTAINER_NAME_BASE:-agentic-email-processing-system}"
 # Free ports if occupied by our own containers (e.g. after a failed deploy or leftover containers)
 if command -v docker >/dev/null 2>&1; then
-    for c in agentic-email-processing-system-blue agentic-email-processing-system-green; do
+    for c in ${CONTAINER_BASE}-blue ${CONTAINER_BASE}-green; do
         if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${c}$"; then
             echo -e "${YELLOW}Stopping and removing existing container: $c (to free port)${NC}"
             docker stop "$c" 2>/dev/null || true
@@ -147,11 +150,12 @@ if check_port "$PORT_BLUE"; then
     exit 1
 fi
 
-# Remove only stale/legacy aeps config filenames (00-, z-). Do NOT remove aeps.alfares.cz.conf here:
+# Remove only stale/legacy frontend config filenames (00-, z-). Do NOT remove ${DOMAIN}.conf here:
 # it is recreated only when deploy succeeds; if deploy fails, we must leave the current config so
-# https://aeps.alfares.cz stays reachable instead of 404.
+# https://${DOMAIN} stays reachable instead of 404.
+FRONTEND_DOMAIN="${DOMAIN:-aeps.alfares.cz}"
 NGINX_CONF_D="$NGINX_MICROSERVICE_PATH/nginx/conf.d"
-rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf" 2>/dev/null || true
+rm -f "$NGINX_CONF_D/00-${FRONTEND_DOMAIN}.conf" "$NGINX_CONF_D/z-${FRONTEND_DOMAIN}.conf" 2>/dev/null || true
 
 # Timing and phase summary
 get_timestamp_seconds() { date +%s.%N; }
@@ -208,15 +212,17 @@ TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
 if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")
     print_phase_summary 2>&1
-    # Canonical frontend: https://aeps.alfares.cz — single config (aeps.alfares.cz only; same naming as other domain configs).
+    # Frontend domain from .env (single config; same naming as other domain configs).
+    DOMAIN="${DOMAIN:-aeps.alfares.cz}"
     NGINX_CONF_D="$NGINX_MICROSERVICE_PATH/nginx/conf.d"
-    AEPS_DEST="$NGINX_CONF_D/aeps.alfares.cz.conf"
+    AEPS_DEST="$NGINX_CONF_D/${DOMAIN}.conf"
     AEPS_SRC="$PROJECT_ROOT/nginx/aeps.alfares.cz.conf"
     CERT_DIR="$NGINX_MICROSERVICE_PATH/certificates"
     NEED_RELOAD=false
 
-    # Detect active color from main domain symlink (blue-green/agentic-...alfares.cz.blue.conf -> blue)
-    MAIN_SYMLINK="$NGINX_CONF_D/agentic-email-processing-system.alfares.cz.conf"
+    # Detect active color from main domain symlink (blue-green). Use MAIN_DOMAIN if set (e.g. when registry still uses long domain).
+    MAIN_DOMAIN="${MAIN_DOMAIN:-$DOMAIN}"
+    MAIN_SYMLINK="$NGINX_CONF_D/${MAIN_DOMAIN}.conf"
     SYMLINK_TARGET=""
     if [ -L "$MAIN_SYMLINK" ]; then
         SYMLINK_TARGET=$(readlink "$MAIN_SYMLINK" 2>/dev/null || true)
@@ -229,25 +235,25 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
             ACTIVE_COLOR="blue"
         fi
     fi
-    AEPS_UPSTREAM="agentic-email-processing-system-${ACTIVE_COLOR}"
+    AEPS_UPSTREAM="${CONTAINER_BASE}-${ACTIVE_COLOR}"
 
     if [ -f "$AEPS_SRC" ]; then
-        if [ -d "$CERT_DIR/alfares.cz" ] && [ ! -e "$CERT_DIR/aeps.alfares.cz" ]; then
-            ln -sfn alfares.cz "$CERT_DIR/aeps.alfares.cz"
-            echo -e "${GREEN}✅ Cert symlink: aeps.alfares.cz -> alfares.cz${NC}"
+        if [ -d "$CERT_DIR/alfares.cz" ] && [ ! -e "$CERT_DIR/$DOMAIN" ]; then
+            ln -sfn alfares.cz "$CERT_DIR/$DOMAIN"
+            echo -e "${GREEN}✅ Cert symlink: $DOMAIN -> alfares.cz${NC}"
         fi
         AEPS_CERT_OK=false
-        if [ -f "$CERT_DIR/aeps.alfares.cz/fullchain.pem" ] && [ -f "$CERT_DIR/aeps.alfares.cz/privkey.pem" ]; then
+        if [ -f "$CERT_DIR/$DOMAIN/fullchain.pem" ] && [ -f "$CERT_DIR/$DOMAIN/privkey.pem" ]; then
             AEPS_CERT_OK=true
         fi
         if [ "$AEPS_CERT_OK" = true ]; then
-            rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf" "$AEPS_DEST"
+            rm -f "$NGINX_CONF_D/00-${DOMAIN}.conf" "$NGINX_CONF_D/z-${DOMAIN}.conf" "$AEPS_DEST"
             sed "s/{{AEPS_UPSTREAM}}/$AEPS_UPSTREAM/g" "$AEPS_SRC" > "$AEPS_DEST"
-            echo -e "${GREEN}✅ aeps.alfares.cz config ($ACTIVE_COLOR): frontend at https://aeps.alfares.cz${NC}"
+            echo -e "${GREEN}✅ $DOMAIN config ($ACTIVE_COLOR): frontend at https://${DOMAIN}${NC}"
             NEED_RELOAD=true
-        elif [ -f "$AEPS_DEST" ] || [ -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" ] || [ -f "$NGINX_CONF_D/z-aeps.alfares.cz.conf" ]; then
-            rm -f "$AEPS_DEST" "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf"
-            echo -e "${YELLOW}Removed aeps config (no cert for aeps.alfares.cz).${NC}"
+        elif [ -f "$AEPS_DEST" ] || [ -f "$NGINX_CONF_D/00-${DOMAIN}.conf" ] || [ -f "$NGINX_CONF_D/z-${DOMAIN}.conf" ]; then
+            rm -f "$AEPS_DEST" "$NGINX_CONF_D/00-${DOMAIN}.conf" "$NGINX_CONF_D/z-${DOMAIN}.conf"
+            echo -e "${YELLOW}Removed frontend config (no cert for $DOMAIN).${NC}"
             NEED_RELOAD=true
         fi
     fi
@@ -265,18 +271,18 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
         fi
     fi
 
-    # Canonical frontend is https://aeps.alfares.cz (we never use agentic-email-processing-system.alfares.cz for the app)
+    # Frontend from DOMAIN
     echo ""
-    echo -e "${BLUE}[INFO] Checking HTTPS availability: https://aeps.alfares.cz/ (canonical frontend, timeout: 5s)${NC}"
-    AEPS_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -k "https://aeps.alfares.cz/" 2>/dev/null || echo "000")
+    echo -e "${BLUE}[INFO] Checking HTTPS availability: https://${DOMAIN}/ (timeout: 5s)${NC}"
+    AEPS_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -k "https://${DOMAIN}/" 2>/dev/null || echo "000")
     if echo "$AEPS_HTTP_CODE" | grep -qE '^[24][0-9][0-9]$'; then
-        echo -e "${GREEN}✅ HTTPS check passed: https://aeps.alfares.cz/ (HTTP $AEPS_HTTP_CODE - service reachable)${NC}"
+        echo -e "${GREEN}✅ HTTPS check passed: https://${DOMAIN}/ (HTTP $AEPS_HTTP_CODE - service reachable)${NC}"
     else
-        echo -e "${YELLOW}⚠️  HTTPS check failed or timeout for https://aeps.alfares.cz/ (HTTP $AEPS_HTTP_CODE) — verify cert and nginx config.${NC}"
+        echo -e "${YELLOW}⚠️  HTTPS check failed or timeout for https://${DOMAIN}/ (HTTP $AEPS_HTTP_CODE) — verify cert and nginx config.${NC}"
     fi
 
     # Check that AEPS container can reach ai-microservice (required for demo/triage to work)
-    AEPS_CONTAINER="agentic-email-processing-system-${ACTIVE_COLOR}"
+    AEPS_CONTAINER="${CONTAINER_BASE}-${ACTIVE_COLOR}"
     if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${AEPS_CONTAINER}$"; then
         if ! docker exec "$AEPS_CONTAINER" wget -q -O- --timeout=5 http://ai-microservice:3380/health >/dev/null 2>&1; then
             echo ""
@@ -296,10 +302,10 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo -e "${BLUE}Running post-deploy tests (endpoints: health, ingest, classify, extract, decide, triage + mandatory 503 error shape)...${NC}"
     cd "$PROJECT_ROOT"
     TEST_EXIT=0
-    # Canonical frontend is https://aeps.alfares.cz — verify that domain so we know production works
+    # Use DOMAIN for test URL when set
     if [ -n "${DOMAIN:-}" ]; then
-        export AEPS_URL="${AEPS_TEST_URL:-https://aeps.alfares.cz}"
-        echo "  Using AEPS_URL=$AEPS_URL (canonical frontend)"
+        export AEPS_URL="${AEPS_TEST_URL:-https://${DOMAIN}}"
+        echo "  Using AEPS_URL=$AEPS_URL (frontend)"
     else
         export AEPS_URL="${AEPS_URL:-http://localhost:3374}"
     fi
@@ -313,7 +319,7 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
             if node scripts/test-email-triage-endpoints.js; then
                 echo -e "${GREEN}✓ All endpoint tests passed at $AEPS_URL${NC}"
                 if [ -n "${DOMAIN:-}" ]; then
-                    echo -e "${YELLOW}  Note: https://aeps.alfares.cz returned an error. Check firewall/WAF if external access is required.${NC}"
+                    echo -e "${YELLOW}  Note: https://${DOMAIN} returned an error. Check firewall/WAF if external access is required.${NC}"
                 fi
                 TEST_PASSED=1
                 break
@@ -331,7 +337,7 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo -e "${GREEN}Total deployment time: ${TOTAL_DURATION_FORMATTED}s${NC}"
     echo ""
     echo "Service has been deployed using blue/green deployment."
-    echo "Frontend: https://aeps.alfares.cz"
+    echo "Frontend: https://${DOMAIN}"
     echo "Check status with:"
     echo "  cd $NGINX_MICROSERVICE_PATH"
     echo "  ./scripts/status-all-services.sh"

@@ -60,7 +60,7 @@ A **visual demo** runs the full pipeline on a fixed dataset of 50 test emails an
 | Health | `http://localhost:3374/health` (local) or via backend |
 | API (backend) | `GET /api/demo/emails`, `GET /api/demo/emails/:id`, `GET /api/demo/emails/:id/logs` (See logs…), `PUT /api/demo/emails/:id` (edit), `POST /api/demo/emails/:id/run`, `POST /api/demo/run-all`, `GET /api/demo/settings`, `PUT /api/demo/settings` (analysis mode: AI vs rule-based) |
 
-**After deployment:** Run `./scripts/deploy.sh`; when the aeps.alfares.cz certificate is present (or symlinked from wildcard), **<https://aeps.alfares.cz>** is installed and available — it is the only frontend URL. The main domain `agentic-email-processing-system.alfares.cz` is served by the blue/green generated config (no duplicate `server_name`). No `/demo` or `/demo/` paths; the app is served at root `/`.
+**After deployment:** Run `./scripts/deploy.sh`; when the aeps.alfares.cz certificate is present (or symlinked from wildcard), **<https://aeps.alfares.cz>** is installed and available — it is the only frontend URL. The main domain `aeps.alfares.cz` is served by the blue/green generated config (no duplicate `server_name`). No `/demo` or `/demo/` paths; the app is served at root `/`.
 
 ## Port and port range
 
@@ -86,7 +86,7 @@ All configuration is via `.env`; keys (no secret values) are in `.env.example`. 
 | -------- | ----------- | ------------------------- |
 | `PORT` | Application port (33xx range) | `3374` |
 | `PORT_BLUE` / `PORT_GREEN` | Blue/green deployment ports | `3374` / `3375` |
-| `DOMAIN` | Service domain for nginx auto-registry | `agentic-email-processing-system.alfares.cz` |
+| `DOMAIN` | Service domain for nginx auto-registry | `aeps.alfares.cz` |
 | `SERVICE_NAME` | Logging and auth registration | `agentic-email-processing-system` |
 | `NGINX_NETWORK_NAME` | Docker network for blue/green | `nginx-network` |
 | `LOGGING_SERVICE_URL` | Central logging (required) | `http://logging-microservice:3367` |
