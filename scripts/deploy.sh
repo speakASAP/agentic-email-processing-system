@@ -147,9 +147,11 @@ if check_port "$PORT_BLUE"; then
     exit 1
 fi
 
-# Remove stale aeps configs so deploy-smart.sh nginx reload does not see them
+# Remove only stale/legacy aeps config filenames (00-, z-). Do NOT remove aeps.alfares.cz.conf here:
+# it is recreated only when deploy succeeds; if deploy fails, we must leave the current config so
+# https://aeps.alfares.cz stays reachable instead of 404.
 NGINX_CONF_D="$NGINX_MICROSERVICE_PATH/nginx/conf.d"
-rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf" "$NGINX_CONF_D/aeps.alfares.cz.conf" 2>/dev/null || true
+rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf" 2>/dev/null || true
 
 # Timing and phase summary
 get_timestamp_seconds() { date +%s.%N; }
