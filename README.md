@@ -129,6 +129,15 @@ If you see **"AI service unreachable … The operation was aborted due to timeou
 | `ECONNREFUSED` | Orchestrator not listening | Start or restart ai-microservice; confirm its healthcheck passes. |
 | `ETIMEDOUT` | Connect or read took too long | Check ai-orchestrator logs for slow/failing ingest; ensure traffic is switched only after orchestrator healthcheck has passed (avoids cold-start timeouts). |
 
+The error message now includes `cause_code=` when present (e.g. `cause_code=ENOTFOUND`) so you can see the reason in the same log line as "Stage failed".
+
+**After deployment:** On the server, ensure both stacks are on the same Docker network and the AI orchestrator is up:
+
+1. `docker network inspect nginx-network` — should list both `agentic-email-processing-system-*` and `ai-microservice-orchestrator-*` (or the active slot).
+2. Deploy **ai-microservice on this host** (before or with AEPS) so the `ai-microservice` alias exists on nginx-network. If you only deploy AEPS, the demo will show "AI service unreachable ... timeout" because no container answers to `ai-microservice:3380`.
+3. **Only one ai-microservice stack (blue or green) must be running.** If both blue and green are up, the alias `ai-microservice` can resolve to the wrong or unhealthy container and cause timeouts. After ai-microservice deploy, the inactive stack is stopped.
+4. `docker exec agentic-email-processing-system-green node /app/scripts/check-ai-incontainer.js` — verifies connectivity from inside the AEPS container (or use `-blue` for the blue slot).
+
 **From the server:** Run connectivity from inside the AEPS container:
 
 - `docker exec agentic-email-processing-system-green node /app/scripts/check-ai-incontainer.js` (or `-blue`)
