@@ -487,7 +487,9 @@ function onEditSave() {
 }
 
 function renderLogsContent(content, logs, error) {
-  const errorHint = error ? `<p class="logs-empty logs-error">Central logging unavailable: ${escapeHtml(error)}</p>` : '';
+  const errorHint = error
+    ? `<p class="logs-empty logs-error">${logs.length ? 'Showing in-memory logs. Central logging unavailable: ' : 'Central logging unavailable: '}${escapeHtml(error)}</p>`
+    : '';
   if (!logs.length) {
     content.innerHTML = errorHint + '<span class="logs-empty">No log lines found for this email. Run triage first or check LOGGING_SERVICE_URL.</span>';
     return;

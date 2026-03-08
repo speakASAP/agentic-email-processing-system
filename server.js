@@ -87,7 +87,7 @@ app.post('/api/ingest', async (req, res) => {
     const result = await aiClient.ingest(req.body || {});
 
     if (!result.success) {
-      await logger.emitEvent({
+      logger.emitEvent({
         message_id,
         timestamp: ts,
         agent: 'ingest',
@@ -104,7 +104,7 @@ app.post('/api/ingest', async (req, res) => {
       });
     }
 
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id: result.payload.message_id,
       timestamp: ts,
       agent: 'ingest',
@@ -118,7 +118,7 @@ app.post('/api/ingest', async (req, res) => {
   } catch (err) {
     const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
     logger.error(`Ingest error (ai-microservice): ${reason}`, { message_id, reason, error: err.message });
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id,
       timestamp: ts,
       agent: 'ingest',
@@ -148,7 +148,7 @@ app.post('/api/classify', async (req, res) => {
   try {
     const result = await aiClient.classify(body);
 
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id,
       timestamp: ts,
       agent: 'classifier',
@@ -172,7 +172,7 @@ app.post('/api/classify', async (req, res) => {
     const escalationReason = err.status === 400 && err.body && err.body.escalation_reason
       ? err.body.escalation_reason
       : null;
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id,
       timestamp: ts,
       agent: 'classifier',
@@ -201,7 +201,7 @@ app.post('/api/extract', async (req, res) => {
   try {
     const result = await aiClient.extract(body);
 
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id: result.message_id || message_id,
       timestamp: ts,
       agent: 'extractor',
@@ -220,7 +220,7 @@ app.post('/api/extract', async (req, res) => {
     });
   } catch (err) {
     logger.error('Extractor error (ai-microservice)', { error: err.message });
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id,
       timestamp: ts,
       agent: 'extractor',
@@ -248,7 +248,7 @@ app.post('/api/decide', async (req, res) => {
   try {
     const result = await aiClient.decide(body);
 
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id,
       timestamp: ts,
       agent: 'action_decider',
@@ -271,7 +271,7 @@ app.post('/api/decide', async (req, res) => {
     const escalationReason = err.status === 400 && err.body && err.body.escalation_reason
       ? err.body.escalation_reason
       : null;
-    await logger.emitEvent({
+    logger.emitEvent({
       message_id,
       timestamp: ts,
       agent: 'action_decider',

@@ -53,11 +53,12 @@ async function sendLog(level, message, metadata = {}) {
 
 /**
  * Emit an audit event per docs/contracts/event-schema.md.
+ * Fire-and-forget: does not block the pipeline; never throws.
  * @param {object} event - message_id, timestamp, agent, decision, confidence?, escalation_reason?, tenant_id?, intent?, action?, details?
  */
-async function emitEvent(event) {
+function emitEvent(event) {
   const message = `[event] ${event.agent} ${event.decision}`;
-  await sendLog('info', message, {
+  sendLog('info', message, {
     message_id: event.message_id,
     timestamp: event.timestamp || new Date().toISOString(),
     agent: event.agent,
@@ -68,6 +69,8 @@ async function emitEvent(event) {
     intent: event.intent,
     action: event.action,
     details: event.details
+  }).catch((err) => {
+    console.error(`[${SERVICE_NAME}] emitEvent failed:`, err.message);
   });
 }
 
