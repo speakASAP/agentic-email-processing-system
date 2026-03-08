@@ -438,6 +438,8 @@ app.post('/api/clear-all', (req, res) => {
   res.json({ ok: true, count: ids.length });
 });
 
+// Frontend sends useLlmClassifier/useLlmDecider (from Classifier/Decider dropdowns). When true, pipeline
+// forwards use_llm to ai-microservice so classify/decide use OpenRouter LLM; when false or omitted, rule-based.
 app.post('/api/emails/:message_id/run', async (req, res) => {
   emailDataset.ensureLoaded();
   const message_id = req.params.message_id;
@@ -662,6 +664,7 @@ app.post('/api/run-all', async (req, res) => {
   const runAllOptions = {};
   if (typeof body.useLlmClassifier === 'boolean') runAllOptions.useLlmClassifier = body.useLlmClassifier;
   if (typeof body.useLlmDecider === 'boolean') runAllOptions.useLlmDecider = body.useLlmDecider;
+  // runAllOptions (or getSettings() when empty) passed to each run → use_llm to ai-microservice → OpenRouter when true
   res.status(202).json({ accepted: true, count: ids.length, concurrency });
 
   setImmediate(async () => {
