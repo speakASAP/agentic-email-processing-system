@@ -30,7 +30,13 @@ function getEmail(id) {
 }
 
 function runOne(id) {
-  return fetch(`${API}/emails/${encodeURIComponent(id)}/run`, { method: 'POST' }).then(r => {
+  const useLlmClassifier = $('classify-mode') && $('classify-mode').value === 'ai';
+  const useLlmDecider = $('decide-mode') && $('decide-mode').value === 'ai';
+  return fetch(`${API}/emails/${encodeURIComponent(id)}/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ useLlmClassifier, useLlmDecider })
+  }).then(r => {
     if (!r.ok) throw new Error(r.statusText);
     return r.json();
   });
@@ -53,7 +59,11 @@ function clearAllResults() {
 }
 
 function runAll(concurrency) {
+  const useLlmClassifier = $('classify-mode') && $('classify-mode').value === 'ai';
+  const useLlmDecider = $('decide-mode') && $('decide-mode').value === 'ai';
   const body = typeof concurrency === 'number' && concurrency >= 1 ? { concurrency } : {};
+  body.useLlmClassifier = useLlmClassifier;
+  body.useLlmDecider = useLlmDecider;
   return fetch(`${API}/run-all`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

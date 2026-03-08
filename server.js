@@ -443,6 +443,10 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
   const message_id = req.params.message_id;
   const rec = demoDataset.get(message_id);
   if (!rec) return res.status(404).json({ error: 'Email not found' });
+  const body = req.body || {};
+  const runOptions = {};
+  if (typeof body.useLlmClassifier === 'boolean') runOptions.useLlmClassifier = body.useLlmClassifier;
+  if (typeof body.useLlmDecider === 'boolean') runOptions.useLlmDecider = body.useLlmDecider;
   // Reset stages to pending then run in background so UI can poll
   demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
   for (const stage of demoDataset.STAGES) {
@@ -454,7 +458,7 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
   setImmediate(async () => {
     const startedAt = new Date().toISOString();
     pushDemoLog(message_id, 'info', 'Demo run started', { started_at: startedAt, progress: 'started' });
-    logger.info('Demo run started', { message_id, started_at: startedAt });
+    logger.info('Demo run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
 
     const email = rec.email;
     const onStageStart = (stage) => {
@@ -505,8 +509,9 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
       demoDataset.setStageResult(message_id, stage, ok ? 'success' : 'failed', data);
       if (!ok) demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
     };
+    const options = Object.keys(runOptions).length ? runOptions : getDemoSettings();
     try {
-      const result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, getDemoSettings());
+      const result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, options);
       const finishedAt = new Date().toISOString();
       if (result.success) {
         demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_COMPLETED);
@@ -534,10 +539,10 @@ app.post('/api/demo/emails/:message_id/run', async (req, res) => {
 const RUN_ALL_RETRY_DELAY_MS = 2000;
 const DEFAULT_RUN_ALL_CONCURRENCY = 5;
 
-async function runOneEmail(message_id, rec) {
+async function runOneEmail(message_id, rec, runOptions = {}) {
   const startedAt = new Date().toISOString();
   pushDemoLog(message_id, 'info', 'Demo run started', { started_at: startedAt, progress: 'started' });
-  logger.info('Demo run started', { message_id, started_at: startedAt });
+  logger.info('Demo run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
 
   demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_PENDING);
   for (const stage of demoDataset.STAGES) {
@@ -591,10 +596,11 @@ async function runOneEmail(message_id, rec) {
     if (!ok) demoDataset.setOverallStatus(message_id, demoDataset.OVERALL_FAILED);
   };
 
+  const options = Object.keys(runOptions).length ? runOptions : getDemoSettings();
   let result;
   let pipelineErr = null;
   try {
-    result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, getDemoSettings());
+    result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, options);
   } catch (err) {
     pipelineErr = err;
   }
@@ -612,7 +618,7 @@ async function runOneEmail(message_id, rec) {
       demoDataset.setStageRunning(message_id, 'ingest');
       pipelineErr = null;
       try {
-        result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, getDemoSettings());
+        result = await runTriagePipeline(email, aiClient, logger, { onStageStart, onStageEnd }, options);
       } catch (err2) {
         pipelineErr = err2;
       }
@@ -644,10 +650,14 @@ async function runOneEmail(message_id, rec) {
 app.post('/api/demo/run-all', async (req, res) => {
   demoDataset.ensureLoaded();
   const ids = demoDataset.getMessageIds();
-  const raw = req.body && (typeof req.body.concurrency === 'number' || typeof req.body.concurrency === 'string') ? req.body.concurrency : null;
+  const body = req.body || {};
+  const raw = body && (typeof body.concurrency === 'number' || typeof body.concurrency === 'string') ? body.concurrency : null;
   const requested = raw != null ? parseInt(raw, 10) : null;
   const defaultConcurrency = Math.max(1, parseInt(process.env.DEMO_RUN_ALL_CONCURRENCY || String(DEFAULT_RUN_ALL_CONCURRENCY), 10));
   const concurrency = Math.min(ids.length, Math.max(1, (!isNaN(requested) && requested >= 1 ? requested : defaultConcurrency)));
+  const runAllOptions = {};
+  if (typeof body.useLlmClassifier === 'boolean') runAllOptions.useLlmClassifier = body.useLlmClassifier;
+  if (typeof body.useLlmDecider === 'boolean') runAllOptions.useLlmDecider = body.useLlmDecider;
   res.status(202).json({ accepted: true, count: ids.length, concurrency });
 
   setImmediate(async () => {
@@ -658,7 +668,7 @@ app.post('/api/demo/run-all', async (req, res) => {
         const rec = demoDataset.get(message_id);
         if (!rec) continue;
         try {
-          await runOneEmail(message_id, rec);
+          await runOneEmail(message_id, rec, runAllOptions);
         } catch (outerErr) {
           logger.error('Demo run-all iteration error (continuing queue)', { message_id, error: outerErr.message });
           try {
