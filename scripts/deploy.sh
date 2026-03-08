@@ -130,7 +130,7 @@ PORT_GREEN="${PORT_GREEN:-3375}"
 # Container base from registry (so we don't need CONTAINER_NAME_BASE in .env)
 CONTAINER_BASE="agentic-email-processing-system"
 if [ -f "$REGISTRY_JSON/${REGISTRY_KEY}.json" ] && command -v jq >/dev/null 2>&1; then
-    _base=$(jq -r '.services.app.container_name_base // .services | to_entries[0].value.container_name_base // empty' "$REGISTRY_JSON/${REGISTRY_KEY}.json" 2>/dev/null)
+    _base=$(jq -r '.services.app.container_name_base // empty' "$REGISTRY_JSON/${REGISTRY_KEY}.json" 2>/dev/null) || true
     [ -n "$_base" ] && CONTAINER_BASE="$_base"
 fi
 # Free ports if occupied by our own containers (e.g. after a failed deploy or leftover containers)
@@ -142,6 +142,7 @@ if command -v docker >/dev/null 2>&1; then
             docker rm "$c" 2>/dev/null || true
         fi
     done
+    true
 fi
 
 # Check if required port is still in use by something else
