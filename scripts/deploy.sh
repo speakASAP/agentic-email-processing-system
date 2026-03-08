@@ -67,8 +67,9 @@ echo -e "${BLUE}║         Agentic Email Processing System — Production Deplo
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# SERVICE_NAME: passed to deploy-smart.sh (registry key). DOMAIN: used for main symlink and frontend config.
-SERVICE_NAME="${SERVICE_NAME:-agentic-email-processing-system}"
+# Only DOMAIN and SERVICE_NAME from .env. Registry key and container base are derived below.
+SERVICE_NAME="${SERVICE_NAME:-aeps}"
+DOMAIN="${DOMAIN:-aeps.alfares.cz}"
 
 # Detect nginx-microservice path
 NGINX_MICROSERVICE_PATH=""
@@ -112,16 +113,26 @@ if [ ! -x "$DEPLOY_SCRIPT" ]; then
     chmod +x "$DEPLOY_SCRIPT"
 fi
 
+# Registry key: use SERVICE_NAME if that registry exists, else fallback (e.g. agentic-email-processing-system)
+REGISTRY_JSON="$NGINX_MICROSERVICE_PATH/service-registry"
+REGISTRY_KEY="$SERVICE_NAME"
+if [ ! -f "$REGISTRY_JSON/${REGISTRY_KEY}.json" ]; then
+    REGISTRY_KEY="agentic-email-processing-system"
+fi
 echo -e "${GREEN}✅ Found nginx-microservice at: $NGINX_MICROSERVICE_PATH${NC}"
-echo -e "${GREEN}✅ Deploying service: $SERVICE_NAME${NC}"
+echo -e "${GREEN}✅ Deploying service: $REGISTRY_KEY${NC}"
 echo ""
 
 # Ports used by blue/green (must match docker-compose.blue.yml / docker-compose.green.yml)
 PORT_BLUE="${PORT_BLUE:-3374}"
 PORT_GREEN="${PORT_GREEN:-3375}"
 
-# Container names from docker-compose (unchanged by SERVICE_NAME in .env)
-CONTAINER_BASE="${CONTAINER_NAME_BASE:-agentic-email-processing-system}"
+# Container base from registry (so we don't need CONTAINER_NAME_BASE in .env)
+CONTAINER_BASE="agentic-email-processing-system"
+if [ -f "$REGISTRY_JSON/${REGISTRY_KEY}.json" ] && command -v jq >/dev/null 2>&1; then
+    _base=$(jq -r '.services.app.container_name_base // .services | to_entries[0].value.container_name_base // empty' "$REGISTRY_JSON/${REGISTRY_KEY}.json" 2>/dev/null)
+    [ -n "$_base" ] && CONTAINER_BASE="$_base"
+fi
 # Free ports if occupied by our own containers (e.g. after a failed deploy or leftover containers)
 if command -v docker >/dev/null 2>&1; then
     for c in ${CONTAINER_BASE}-blue ${CONTAINER_BASE}-green; do
@@ -181,7 +192,7 @@ echo ""
 cd "$NGINX_MICROSERVICE_PATH"
 end_phase "Pre-deployment Setup"
 START_TIME=$(get_timestamp_seconds)
-"$DEPLOY_SCRIPT" "$SERVICE_NAME" 2>&1 | {
+"$DEPLOY_SCRIPT" "$REGISTRY_KEY" 2>&1 | {
     build_started=0; start_containers_started=0; health_check_started=0
     while IFS= read -r line; do echo "$line"
         if echo "$line" | grep -qE "Phase 0:.*Infrastructure"; then start_phase "Phase 0: Infrastructure Check"
@@ -220,8 +231,12 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     CERT_DIR="$NGINX_MICROSERVICE_PATH/certificates"
     NEED_RELOAD=false
 
-    # Detect active color from main domain symlink (blue-green). Use MAIN_DOMAIN if set (e.g. when registry still uses long domain).
-    MAIN_DOMAIN="${MAIN_DOMAIN:-$DOMAIN}"
+    # Detect active color from main domain symlink. Domain comes from registry (same as DOMAIN when registry uses aeps.alfares.cz).
+    MAIN_DOMAIN="$DOMAIN"
+    if [ -f "$REGISTRY_JSON/${REGISTRY_KEY}.json" ] && command -v jq >/dev/null 2>&1; then
+        _reg_domain=$(jq -r '.domain // empty' "$REGISTRY_JSON/${REGISTRY_KEY}.json" 2>/dev/null)
+        [ -n "$_reg_domain" ] && MAIN_DOMAIN="$_reg_domain"
+    fi
     MAIN_SYMLINK="$NGINX_CONF_D/${MAIN_DOMAIN}.conf"
     SYMLINK_TARGET=""
     if [ -L "$MAIN_SYMLINK" ]; then
