@@ -147,9 +147,9 @@ if check_port "$PORT_BLUE"; then
     exit 1
 fi
 
-# Remove stale aeps configs so deploy-smart.sh nginx reload does not see them (load order: main config must load before aeps)
+# Remove stale aeps configs so deploy-smart.sh nginx reload does not see them
 NGINX_CONF_D="$NGINX_MICROSERVICE_PATH/nginx/conf.d"
-rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf" 2>/dev/null || true
+rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf" "$NGINX_CONF_D/aeps.alfares.cz.conf" 2>/dev/null || true
 
 # Timing and phase summary
 get_timestamp_seconds() { date +%s.%N; }
@@ -206,9 +206,9 @@ TOTAL_DURATION=$(awk "BEGIN {printf \"%.2f\", $END_TIME - $START_TIME}")
 if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     TOTAL_DURATION_FORMATTED=$(awk "BEGIN {printf \"%.2f\", $TOTAL_DURATION}")
     print_phase_summary 2>&1
-    # Canonical frontend: https://aeps.alfares.cz — single config (aeps.alfares.cz only, no duplicate server_name).
+    # Canonical frontend: https://aeps.alfares.cz — single config (aeps.alfares.cz only; same naming as other domain configs).
     NGINX_CONF_D="$NGINX_MICROSERVICE_PATH/nginx/conf.d"
-    AEPS_DEST="$NGINX_CONF_D/z-aeps.alfares.cz.conf"
+    AEPS_DEST="$NGINX_CONF_D/aeps.alfares.cz.conf"
     AEPS_SRC="$PROJECT_ROOT/nginx/aeps.alfares.cz.conf"
     CERT_DIR="$NGINX_MICROSERVICE_PATH/certificates"
     NEED_RELOAD=false
@@ -239,12 +239,12 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
             AEPS_CERT_OK=true
         fi
         if [ "$AEPS_CERT_OK" = true ]; then
-            rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/aeps.alfares.cz.conf" "$AEPS_DEST"
+            rm -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf" "$AEPS_DEST"
             sed "s/{{AEPS_UPSTREAM}}/$AEPS_UPSTREAM/g" "$AEPS_SRC" > "$AEPS_DEST"
             echo -e "${GREEN}✅ aeps.alfares.cz config ($ACTIVE_COLOR): frontend at https://aeps.alfares.cz${NC}"
             NEED_RELOAD=true
-        elif [ -f "$AEPS_DEST" ] || [ -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" ] || [ -f "$NGINX_CONF_D/aeps.alfares.cz.conf" ]; then
-            rm -f "$AEPS_DEST" "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/aeps.alfares.cz.conf"
+        elif [ -f "$AEPS_DEST" ] || [ -f "$NGINX_CONF_D/00-aeps.alfares.cz.conf" ] || [ -f "$NGINX_CONF_D/z-aeps.alfares.cz.conf" ]; then
+            rm -f "$AEPS_DEST" "$NGINX_CONF_D/00-aeps.alfares.cz.conf" "$NGINX_CONF_D/z-aeps.alfares.cz.conf"
             echo -e "${YELLOW}Removed aeps config (no cert for aeps.alfares.cz).${NC}"
             NEED_RELOAD=true
         fi

@@ -105,6 +105,8 @@ Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are
 - **LOGGING_SERVICE_URL** must be reachable from this app so that **"See logs…"** in the demo UI returns data. Set it to the central logging microservice (e.g. `http://logging-microservice:3367` on Docker network, or the production logging URL). The app sends all agent events there and queries by `service=` and `message_id` for the logs modal.
 - **AI_SERVICE_URL** must point at the deployed **ai-microservice** that exposes the email-triage agents (`POST /api/email-triage/ingest`, `classify`, `extract`, `decide`). Use the orchestrator base URL (e.g. `http://ai-microservice:3380` or `https://ai.alfares.cz`).
 
+**Production (https://aeps.alfares.cz):** For the demo and triage to work, **ai-microservice must be deployed on the same server** and attached to **nginx-network** with alias `ai-microservice` (so the AEPS container can resolve `http://ai-microservice:3380`). Leave `AI_SERVICE_URL` unset or set `AI_SERVICE_URL=http://ai-microservice:3380` in `.env`. Deploy ai-microservice first (or ensure it is running) so the alias is registered. If ingest fails with timeout, check logs for `cause_code` (`ENOTFOUND` = hostname not resolved; `ECONNREFUSED` = orchestrator not listening; `ETIMEDOUT` = connect/read too slow). From the server, run `docker exec agentic-email-processing-system-green node /app/scripts/check-ai-incontainer.js` (or `-blue`) to verify connectivity from inside the AEPS container.
+
 **Verify connectivity:** `GET /health` returns `logging` and `ai` with values:
 
 - `ok` — service reachable (See logs… and triage will work).
@@ -155,7 +157,7 @@ Configuration and deployment follow the common approach (see [CREATE_SERVICE.md]
 
 **Nginx config (codebase only; per [DEPLOY_STANDARD.md](../shared/docs/DEPLOY_STANDARD.md), define each `server_name` in only one config to avoid conflicts):**
 
-- `nginx/aeps.alfares.cz.conf` — Single file: vhost for **aeps.alfares.cz** only (no long domain here). Placeholder `{{AEPS_UPSTREAM}}` is replaced by deploy script with `agentic-email-processing-system-blue` or `-green`; result is copied to nginx-microservice `conf.d/z-aeps.alfares.cz.conf`. Main domain is only in blue-green generated config.
+- `nginx/aeps.alfares.cz.conf` — Single file: vhost for **aeps.alfares.cz** only (no long domain here). Placeholder `{{AEPS_UPSTREAM}}` is replaced by deploy script with `agentic-email-processing-system-blue` or `-green`; result is copied to nginx-microservice `conf.d/aeps.alfares.cz.conf` (same naming pattern as other domain configs). Main domain is only in blue-green generated config.
 
 ### Production (Docker + blue/green)
 
