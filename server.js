@@ -36,6 +36,8 @@ const PORT = process.env.PORT || 3374;
 // In-memory run log buffer per message_id (so "See logs..." shows progress even if LOGGING_SERVICE_URL is down)
 const RUN_LOG_BUFFER_MAX = 100;
 const runLogBuffer = new Map();
+// When Clear all was last clicked; logs API returns only entries with timestamp >= this (no old logs after clear).
+let logsClearAllTimestamp = null;
 
 // Applications directory: logs stored in 3 places — central service, in-memory, and local logs/ dir
 const LOG_DIR = process.env.LOG_DIR || 'logs';
@@ -365,7 +367,9 @@ app.get('/api/emails/:message_id/logs', async (req, res) => {
   const sourceMemoryOnly = (req.query.source || '').toLowerCase() === 'memory';
 
   const inMemory = runLogBuffer.get(String(message_id)) || [];
-  const sortedMemory = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+  const since = logsClearAllTimestamp || '';
+  const filterSince = (arr) => (since ? arr.filter((e) => (e.timestamp || '') >= since) : arr);
+  const sortedMemory = filterSince([...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || '')));
 
   if (sourceMemoryOnly || !LOGGING_SERVICE_URL) {
     const message = sourceMemoryOnly ? undefined : 'Logging service not configured; showing in-memory progress only';
@@ -378,28 +382,30 @@ app.get('/api/emails/:message_id/logs', async (req, res) => {
     const response = await fetch(queryUrl, { signal: AbortSignal.timeout(LOGS_CENTRAL_TIMEOUT_MS) });
     if (!response.ok) {
       logger.error('Logs query failed', { status: response.status, message_id });
-      const merged = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+      const merged = filterSince([...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || '')));
       return res.json({ logs: merged, error: `Logging service returned ${response.status}` });
     }
     const data = await response.json();
     const all = (data && data.data && Array.isArray(data.data)) ? data.data : [];
-    const fromService = all
-      .filter((entry) => {
-        const meta = entry.metadata || {};
-        return String(meta.message_id || '') === String(message_id);
-      })
-      .map((entry) => ({
-        timestamp: entry.timestamp || entry.ts,
-        level: entry.level || entry.severity || 'info',
-        message: entry.message || entry.msg || '',
-        metadata: entry.metadata || {}
-      }));
-    const merged = [...inMemory, ...fromService].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+    const fromService = filterSince(
+      all
+        .filter((entry) => {
+          const meta = entry.metadata || {};
+          return String(meta.message_id || '') === String(message_id);
+        })
+        .map((entry) => ({
+          timestamp: entry.timestamp || entry.ts,
+          level: entry.level || entry.severity || 'info',
+          message: entry.message || entry.msg || '',
+          metadata: entry.metadata || {}
+        }))
+    );
+    const merged = filterSince([...inMemory, ...fromService].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || '')));
     return res.json({ logs: merged });
   } catch (err) {
     const reason = aiClient.getErrorReason ? aiClient.getErrorReason(err) : 'other';
     logger.error(`Logs fetch error: ${reason}`, { message_id, reason, error: err.message });
-    const merged = [...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+    const merged = filterSince([...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || '')));
     return res.json({ logs: merged, error: err.message || 'Failed to fetch logs' });
   }
 });
@@ -428,21 +434,26 @@ app.post('/api/emails/:message_id/clear', (req, res) => {
   for (const stage of emailDataset.STAGES) {
     emailDataset.setStageResult(message_id, stage, 'pending', {});
   }
-  logger.info('Results cleared', { message_id });
+  runLogBuffer.delete(String(message_id));
+  logger.info('Results and run logs cleared', { message_id });
   res.json({ ok: true, message_id });
 });
 
 app.post('/api/clear-all', (req, res) => {
   emailDataset.ensureLoaded();
   const ids = emailDataset.getMessageIds();
+  const clearAt = new Date().toISOString();
   for (const message_id of ids) {
     emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_PENDING);
     for (const stage of emailDataset.STAGES) {
       emailDataset.setStageResult(message_id, stage, 'pending', {});
     }
+    runLogBuffer.delete(String(message_id));
   }
-  logger.info('Results cleared for all emails', { count: ids.length });
-  res.json({ ok: true, count: ids.length });
+  // All in-memory run logs cleared above. Filter for log retrieval so only entries >= clearAt are returned.
+  logsClearAllTimestamp = clearAt;
+  logger.info('Results and run logs cleared for all emails', { count: ids.length, logs_cleared_from: clearAt });
+  res.json({ ok: true, count: ids.length, clear_all_timestamp: clearAt });
 });
 
 // Frontend sends useLlmClassifier/useLlmDecider (from Classifier/Decider dropdowns). When true, pipeline

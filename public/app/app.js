@@ -437,6 +437,7 @@ function onClearAllResults() {
     expandedStages = {};
     cachedLogs = null;
     cachedLogsMessageId = null;
+    closeLogsModal();
     refreshList().then(() => { if (selectedId) loadDetail(selectedId); });
   }).catch(err => alert(err.message));
 }
