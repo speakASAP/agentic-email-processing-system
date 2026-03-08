@@ -447,8 +447,13 @@ app.post('/api/emails/:message_id/run', async (req, res) => {
   if (!rec) return res.status(404).json({ error: 'Email not found' });
   const body = req.body || {};
   const runOptions = {};
-  if (typeof body.useLlmClassifier === 'boolean') runOptions.useLlmClassifier = body.useLlmClassifier;
-  if (typeof body.useLlmDecider === 'boolean') runOptions.useLlmDecider = body.useLlmDecider;
+  if (body.useLlmClassifier !== undefined && body.useLlmClassifier !== null) {
+    runOptions.useLlmClassifier = Boolean(body.useLlmClassifier === true || body.useLlmClassifier === 'true' || body.useLlmClassifier === 1);
+  }
+  if (body.useLlmDecider !== undefined && body.useLlmDecider !== null) {
+    runOptions.useLlmDecider = Boolean(body.useLlmDecider === true || body.useLlmDecider === 'true' || body.useLlmDecider === 1);
+  }
+  logger.info('Run one requested', { message_id, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider, from_body: { useLlmClassifier: body.useLlmClassifier, useLlmDecider: body.useLlmDecider } });
   // Reset stages to pending then run in background so UI can poll
   emailDataset.setOverallStatus(message_id, emailDataset.OVERALL_PENDING);
   for (const stage of emailDataset.STAGES) {
@@ -662,8 +667,14 @@ app.post('/api/run-all', async (req, res) => {
   const defaultConcurrency = Math.max(1, parseInt(process.env.DEMO_RUN_ALL_CONCURRENCY || String(DEFAULT_RUN_ALL_CONCURRENCY), 10));
   const concurrency = Math.min(ids.length, Math.max(1, (!isNaN(requested) && requested >= 1 ? requested : defaultConcurrency)));
   const runAllOptions = {};
-  if (typeof body.useLlmClassifier === 'boolean') runAllOptions.useLlmClassifier = body.useLlmClassifier;
-  if (typeof body.useLlmDecider === 'boolean') runAllOptions.useLlmDecider = body.useLlmDecider;
+  // Coerce so UI choice is always propagated even if sent as string "true"/"false" or 1/0
+  if (body.useLlmClassifier !== undefined && body.useLlmClassifier !== null) {
+    runAllOptions.useLlmClassifier = Boolean(body.useLlmClassifier === true || body.useLlmClassifier === 'true' || body.useLlmClassifier === 1);
+  }
+  if (body.useLlmDecider !== undefined && body.useLlmDecider !== null) {
+    runAllOptions.useLlmDecider = Boolean(body.useLlmDecider === true || body.useLlmDecider === 'true' || body.useLlmDecider === 1);
+  }
+  logger.info('Run-all requested', { useLlmClassifier: runAllOptions.useLlmClassifier, useLlmDecider: runAllOptions.useLlmDecider, from_body: { useLlmClassifier: body.useLlmClassifier, useLlmDecider: body.useLlmDecider }, count: ids.length, concurrency });
   // runAllOptions (or getSettings() when empty) passed to each run → use_llm to ai-microservice → OpenRouter when true
   res.status(202).json({ accepted: true, count: ids.length, concurrency });
 

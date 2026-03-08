@@ -165,6 +165,8 @@ body {
 .stage .name .badge.running { background: var(--warn); color: #000; }
 .stage .name .badge.success { background: var(--success); color: #000; }
 .stage .name .badge.failed { background: var(--error); color: #fff; }
+.stage .name .stage-model { font-size: 0.75rem; font-weight: 400; color: var(--muted); margin-left: 0.35rem; }
+.stage .name .stage-model::before { content: '· '; color: var(--border); }
 .stage .io { font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; }
 .stage .io pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 0.8rem; }
 .stage .error { color: var(--error); font-size: 0.85rem; margin-top: 0.35rem; }

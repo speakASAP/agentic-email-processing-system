@@ -241,11 +241,13 @@ function renderDetail(rec) {
     const d = st.data || {};
     const status = d.status || 'pending';
     const isExpanded = !!expandedStages[st.key];
+    const modelLabel = (st.key === 'classify' || st.key === 'decide') && d.model_used
+      ? ` <span class="stage-model" title="Model used for this stage">${escapeHtml(d.model_used)}</span>` : '';
     return `
       <div class="stage stage-expandable" data-stage="${st.key}">
         <div class="stage-header" role="button" tabindex="0" aria-expanded="${isExpanded}">
           <span class="stage-chevron" aria-hidden="true">${isExpanded ? '▼' : '▶'}</span>
-          <div class="name">${escapeHtml(st.title)} <span class="badge ${status}">${status}</span></div>
+          <div class="name">${escapeHtml(st.title)} <span class="badge ${status}">${status}</span>${modelLabel}</div>
         </div>
         <div class="stage-body${isExpanded ? '' : ' stage-body-collapsed'}" data-stage="${st.key}">
           ${d.error ? `<div class="error">${escapeHtml(d.error)}</div>` : ''}
