@@ -309,10 +309,10 @@ Search logs for these to trace where the parameter is set or lost:
 
 This error means the UI sent `use_llm: true` but the ai-orchestrator either had **FREE_AI_SERVICE_URL** unset or the call to free-ai-service failed (timeout, 5xx, or exception), so it fell back to rule-based and AEPS/ai-orchestrator then report the mismatch.
 
-### On production (ssh statex)
+### Local deployment (alfares.cz only)
 
 1. **Set FREE_AI_SERVICE_URL in ai-microservice .env**  
-   In `~/ai-microservice/.env` (or the path used on prod), ensure:
+   In the ai-microservice repo `.env` (e.g. `path/to/ai-microservice/.env`), ensure:
    ```bash
    FREE_AI_SERVICE_URL=http://ai-microservice-free-ai-service-green:3386
    ```
@@ -337,12 +337,28 @@ This error means the UI sent `use_llm: true` but the ai-orchestrator either had 
    ```
    Look for OPENROUTER_API_KEY SET/NOT SET, connection errors, or 5xx from OpenRouter.
 
-5. **Redeploy ai-microservice**  
-   After editing .env, redeploy so the orchestrator and free-ai-service get the new env:
+5. **Redeploy ai-microservice locally**  
+   After editing .env, redeploy so the orchestrator and free-ai-service get the new env (from the repo that runs deploy, e.g. agentic-email-processing-system or nginx-microservice):
    ```bash
-   cd ~/nginx-microservice && ./scripts/blue-green/deploy-smart.sh ai-microservice
+   ./scripts/deploy.sh
    ```
-   (Or the exact deploy command you use for ai-microservice.)
+   Or from ai-microservice: build and up the active stack (blue or green) so containers pick up .env.
 
 6. **Re-test from AEPS**  
    Open https://aeps.alfares.cz/ (canonical URL), set Classifier and Decider to **AI (LLM)**, Clear all, Run all 50. Check "See logs…" for an email: you should see `model: <OpenRouter model>` for classify and decide, not `rule-based`.
+
+### OpenRouter 402 / 404 (insufficient credits or free-tier policy)
+
+If free-ai-service logs show **OpenRouter API error: 402** (Insufficient credits) or **404** (No endpoints for free model / data policy), the app will **gracefully fall back** to rule-based: triage completes with `model_used: rule-based` and `llm_fallback_reason` in the response. Run all 50 will **succeed**; only the classifier/decider use rules instead of LLM.
+
+To use LLM again:
+
+- **402:** Add credits at https://openrouter.ai/settings/credits (or fix the API key / org).
+- **404 (data policy):** Configure free model publication at https://openrouter.ai/settings/privacy.
+- **404 (model not found):** The preferred free model may be deprecated; check free-ai-service model preferences for `email_classify` / `email_decide`.
+
+7. **If free-ai-service logs show OpenRouter 404/402**  
+   - free-ai-service tries **openrouter/free** first (router that auto-selects a free model); then specific free/paid models.  
+   - 404 often means "No endpoints for model" or "Free model publication" — check OpenRouter account settings (e.g. https://openrouter.ai/settings/privacy).  
+   - 402 means insufficient credits; use a free model (openrouter/free or :free variants) or add credits.  
+   - **Ollama fallback:** If `OLLAMA_URL` is set in ai-microservice .env (e.g. `http://host:11434`) and Ollama is reachable, free-ai-service will try Ollama when OpenRouter fails. Set `OLLAMA_URL` and run Ollama with a model (e.g. `llama2:7b`) to use local LLM for email-triage when OpenRouter is unavailable.
