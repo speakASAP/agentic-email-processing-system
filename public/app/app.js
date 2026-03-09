@@ -172,6 +172,7 @@ function refreshList() {
   return listEmails()
     .then(emails => {
       allEmails = emails;
+      categories = new Set();
       emails.forEach(e => { if (e.category) categories.add(e.category); });
       fillCategoryFilter();
       renderList();
@@ -435,6 +436,7 @@ function onClearResults() {
 function onClearAllResults() {
   clearAllResults().then(() => {
     expandedStages = {};
+    selectedCategory = '';
     cachedLogs = null;
     cachedLogsMessageId = null;
     closeLogsModal();

@@ -1,7 +1,7 @@
 /* Email Triage UI — landing-style, clear, modern */
 
 :root {
-  --bg: radial-gradient(circle at top left, #121926 0, #050812 55%, #02040a 100%);
+  --bg: radial-gradient(circle at top left, rgba(255, 107, 107, 0.22) 0, rgba(15, 23, 42, 1) 42%), radial-gradient(circle at bottom right, #020617 0, #020617 55%, #020617 100%);
   --surface: rgba(13, 20, 34, 0.96);
   --border: #253047;
   --text: #f7fafc;
