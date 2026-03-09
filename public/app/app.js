@@ -127,7 +127,7 @@ function renderList() {
       <div class="meta">
         <span class="status ${e.status}">${e.status}</span>
         ${e.category ? `<span>Category: ${escapeHtml(e.category)}</span>` : ''}
-        ${e.action ? `<span>Action: ${escapeHtml(e.action)}</span>` : ''}
+        ${e.action ? `<span>Action: ${escapeHtml(e.action)}${e.queue ? ` → ${escapeHtml(e.queue)}` : ''}</span>` : ''}
       </div>
     </li>
   `).join('');
@@ -293,7 +293,7 @@ function renderDetail(rec) {
     <div class="final">
       ${explanationLine ? `<div class="explanation${isRoutedSuccess ? ' explanation-success' : ''}">${explanationLine}</div>` : ''}
       ${category ? `<div class="category">Category: ${escapeHtml(category)}</div>` : ''}
-      ${decide.action ? `<div class="action">Action: ${escapeHtml(decide.action)}</div>` : ''}
+      ${decide.action ? `<div class="action">Action: ${escapeHtml(decide.action)}${decide.queue ? ` → ${escapeHtml(decide.queue)}` : ''}</div>` : ''}
       ${decide.escalation_reason ? `<div class="escalation">Escalation: ${escapeHtml(decide.escalation_reason)}</div>` : ''}
     </div>`;
 
@@ -320,27 +320,29 @@ function fillStageBody(rec, st, bodyEl, messageId) {
   if (resPre) resPre.textContent = responseObj != null ? JSON.stringify(responseObj, null, 2) : '—';
   if (logsContent) {
     if (cachedLogsMessageId === messageId && cachedLogs !== null) {
-      logsContent.innerHTML = cachedLogs.length ? cachedLogs.map((entry) => {
+      const stageLogs = cachedLogs.filter((entry) => entry && entry.metadata && entry.metadata.stage === st.key);
+      logsContent.innerHTML = stageLogs.length ? stageLogs.map((entry) => {
         const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
         const level = escapeHtml(entry.level || '');
         const msg = escapeHtml(entry.message || '');
         const meta = entry.metadata && Object.keys(entry.metadata).length ? escapeHtml(JSON.stringify(entry.metadata, null, 2)) : '';
         return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
-      }).join('') : '<span class="logs-empty">No log lines for this email.</span>';
+      }).join('') : '<span class="logs-empty">No log lines for this stage yet.</span>';
     } else {
       logsContent.textContent = 'Loading…';
-      fetchLogs(messageId).then(({ logs, error }) => {
-        cachedLogs = logs;
+      fetchLogs(messageId, { sourceMemory: true }).then(({ logs, error }) => {
+        cachedLogs = logs || [];
         cachedLogsMessageId = messageId;
         if (logsContent.textContent === 'Loading…') {
           const errHint = error ? `<span class="logs-empty">Central logging: ${escapeHtml(error)}</span>` : '';
-          logsContent.innerHTML = errHint + (logs.length ? logs.map((entry) => {
+          const stageLogs = cachedLogs.filter((entry) => entry && entry.metadata && entry.metadata.stage === st.key);
+          logsContent.innerHTML = errHint + (stageLogs.length ? stageLogs.map((entry) => {
             const ts = entry.timestamp ? new Date(entry.timestamp).toISOString() : '—';
             const level = escapeHtml(entry.level || '');
             const msg = escapeHtml(entry.message || '');
             const meta = entry.metadata && Object.keys(entry.metadata).length ? escapeHtml(JSON.stringify(entry.metadata, null, 2)) : '';
             return `<div class="logs-line"><div class="logs-meta">${ts} · ${level}</div><div class="logs-msg">${msg}</div>${meta ? `<div class="logs-meta">${meta}</div>` : ''}</div>`;
-          }).join('') : '<span class="logs-empty">No log lines for this email.</span>');
+          }).join('') : '<span class="logs-empty">No log lines for this stage yet.</span>');
         }
       }).catch((err) => {
         logsContent.innerHTML = `<span class="logs-empty">Failed to load logs: ${escapeHtml(err.message)}</span>`;

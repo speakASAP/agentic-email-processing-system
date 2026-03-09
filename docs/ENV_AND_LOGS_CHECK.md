@@ -26,7 +26,7 @@ Logs are written to **three places** in AEPS; ai-microservice uses central loggi
 
 ### 2.1 AEPS — In-memory run logs (per email)
 
-**What:** Per-email triage run entries (stage started/completed, `model_used`, errors). Cleared when you click **Clear all** or **Clear** for one email. Max **100 entries per email** (oldest dropped when buffer is full). The same entries are also appended to the local file (2.2); they are **not** sent to central logging by pushRunLog (see 2.6).
+**What:** Per-email triage run entries (stage started/completed, `model_used`, errors). Cleared when you click **Clear all** or **Clear** for one email, and **reset when a new triage run starts** (Run triage / Run all 50). Max **100 entries per email** (oldest dropped when buffer is full). The same entries are also appended to the local file (2.2); they are **not** sent to central logging by pushRunLog (see 2.6).
 
 **Where in code:** `server.js` → `runLogBuffer` (Map keyed by `message_id`). Filled by `pushRunLog(message_id, level, message, metadata)`.
 
@@ -228,7 +228,7 @@ So: **run log lines** (stage started/completed, model_used, errors) come from `p
 | **"See logs…" empty after a run** | In-memory + central. | Ensure the run actually completed (check stage status). After **Clear all**, only logs with timestamp ≥ clear time are shown. Try `?source=memory` to rule out central timeout. |
 | **No run log lines in file** | `LOG_DIR/run.log` | Check `LOG_DIR` in .env and that the process can write (permissions). Default `logs/run.log` relative to process cwd. |
 | **No central logs for AEPS** | Central query by `service=<SERVICE_NAME>` | Confirm `LOGGING_SERVICE_URL` and `LOGGING_SERVICE_API_PATH` in .env. First 30s after startup logs go only to stdout. Check stdout for "Logging service request timeout" or "Logging service failed". |
-| **Old logs still visible after Clear all** | Server: `logsClearAllTimestamp` | Verify POST /api/clear-all is called (e.g. from UI). Response includes `clear_all_timestamp`. Reload "See logs…" after clear. |
+| **Old logs still visible after Clear all** | Server: `logsClearAllTimestamp` | Verify POST /api/clear-all is called (e.g. from UI). Response includes `clear_all_timestamp`. Reload "See logs…" after clear. After a successful **Run triage** or **Run all 50 emails**, only log lines from the latest run are returned per email. |
 | **Classifier/Decider show rule-based with LLM selected** | See section 3 (log points). | Trace use_llm in AEPS server → ai_client → orchestrator → free-ai-service. Check orchestrator logs for "POINT OF FAILURE" and free-ai-service for OpenRouter 404. |
 
 ---
@@ -278,11 +278,12 @@ Search logs for these to trace where the parameter is set or lost:
 
 ---
 
-## 4. Clear all and log filtering
+## 4. Clear all, Clear, Run triage, and log filtering
 
 - **Clear all** clears in-memory run logs for every email and sets **logsClearAllTimestamp** to the current time.
-- **GET /api/emails/:message_id/logs** returns only entries with `timestamp >= logsClearAllTimestamp` (for both in-memory and central merge). So after Clear all, **no old logs** are shown in the UI or API.
-- **Single-email Clear** clears that email’s in-memory run log only; it does not change the global “since” time.
+- **Single-email Clear** clears that email’s in-memory run log and sets a per-email “since” timestamp to the clear time.
+- **Run triage** (Run one) and **Run all 50 emails** both reset that email’s in-memory run log and set the per-email “since” timestamp to the run start time.
+- **GET /api/emails/:message_id/logs** returns only entries with `timestamp >= max(logsClearAllTimestamp, email_logs_since[message_id])` (for both in-memory and central merge). So after Clear all or a new run, **no old logs** are shown in the UI or API for that email.
 
 ---
 

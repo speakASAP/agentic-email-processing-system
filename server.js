@@ -36,7 +36,9 @@ const PORT = process.env.PORT || 3374;
 // In-memory run log buffer per message_id (so "See logs..." shows progress even if LOGGING_SERVICE_URL is down)
 const RUN_LOG_BUFFER_MAX = 100;
 const runLogBuffer = new Map();
-// When Clear all was last clicked; logs API returns only entries with timestamp >= this (no old logs after clear).
+// Per-email "since" timestamp (Clear for this email or last triage run); used together with logsClearAllTimestamp.
+const emailLogsSince = new Map();
+// When Clear all was last clicked; logs API returns only entries with timestamp >= this (no old logs after clear-all).
 let logsClearAllTimestamp = null;
 
 // Applications directory: logs stored in 3 places — central service, in-memory, and local logs/ dir
@@ -367,7 +369,10 @@ app.get('/api/emails/:message_id/logs', async (req, res) => {
   const sourceMemoryOnly = (req.query.source || '').toLowerCase() === 'memory';
 
   const inMemory = runLogBuffer.get(String(message_id)) || [];
-  const since = logsClearAllTimestamp || '';
+  const emailSince = emailLogsSince.get(String(message_id)) || '';
+  const since = logsClearAllTimestamp && emailSince
+    ? (emailSince > logsClearAllTimestamp ? emailSince : logsClearAllTimestamp)
+    : (emailSince || logsClearAllTimestamp || '');
   const filterSince = (arr) => (since ? arr.filter((e) => (e.timestamp || '') >= since) : arr);
   const sortedMemory = filterSince([...inMemory].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || '')));
 
@@ -435,6 +440,7 @@ app.post('/api/emails/:message_id/clear', (req, res) => {
     emailDataset.setStageResult(message_id, stage, 'pending', {});
   }
   runLogBuffer.delete(String(message_id));
+  emailLogsSince.set(String(message_id), new Date().toISOString());
   logger.info('Results and run logs cleared', { message_id });
   res.json({ ok: true, message_id });
 });
@@ -452,6 +458,7 @@ app.post('/api/clear-all', (req, res) => {
   }
   // All in-memory run logs cleared above. Filter for log retrieval so only entries >= clearAt are returned.
   logsClearAllTimestamp = clearAt;
+  emailLogsSince.clear();
   logger.info('Results and run logs cleared for all emails', { count: ids.length, logs_cleared_from: clearAt });
   res.json({ ok: true, count: ids.length, clear_all_timestamp: clearAt });
 });
@@ -491,6 +498,9 @@ app.post('/api/emails/:message_id/run', async (req, res) => {
 
   setImmediate(async () => {
     const startedAt = new Date().toISOString();
+    const key = String(message_id);
+    runLogBuffer.delete(key);
+    emailLogsSince.set(key, startedAt);
     pushRunLog(message_id, 'info', 'Triage run started', { started_at: startedAt, progress: 'started', useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
     logger.info('Triage run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
 
@@ -590,6 +600,9 @@ const DEFAULT_RUN_ALL_CONCURRENCY = 5;
 
 async function runOneEmail(message_id, rec, runOptions = {}) {
   const startedAt = new Date().toISOString();
+  const key = String(message_id);
+  runLogBuffer.delete(key);
+  emailLogsSince.set(key, startedAt);
   logger.info('runOneEmail options (use_llm flow)', { message_id, runOptions_useLlmClassifier: runOptions.useLlmClassifier, runOptions_useLlmDecider: runOptions.useLlmDecider, runOptions_keys: Object.keys(runOptions) });
   pushRunLog(message_id, 'info', 'Triage run started', { started_at: startedAt, progress: 'started', useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
   logger.info('Triage run started', { message_id, started_at: startedAt, useLlmClassifier: runOptions.useLlmClassifier, useLlmDecider: runOptions.useLlmDecider });
