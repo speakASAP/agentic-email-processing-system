@@ -124,7 +124,7 @@ Phase 3 (act + escalate, sync) ──► Sync D (end-to-end flow, observability 
 
 **Role:** Contract author for email intent classification.
 
-**Scope:** Define the intent taxonomy used by the Classifier Agent. Must align with business scenario and Deutsche Telekom–reasoned design.
+**Scope:** Define the intent taxonomy used by the Classifier Agent. Must align with the business scenario and the reasoning captured in the five design approaches.
 
 **DO:**
 
@@ -303,7 +303,7 @@ Phase 3 (act + escalate, sync) ──► Sync D (end-to-end flow, observability 
 - [x] Confidence thresholds and ambiguity handling (unknown, multi-intent, escalate-by-default) documented and applied.
 - [x] Action set and escalation contract implemented; escalation reasons auditable.
 - [x] At least one end-to-end path: ingest → classify → extract → decide → act or escalate (POST /api/triage).
-- [x] Five approaches (Deutsche Telekom) documented and up to date in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`.
+- [x] Five approaches for the target telecom enterprise documented and up to date in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`.
 - [x] Validator sign-off on Sync A (and Sync B–D when applicable) recorded (Sync A, B, C, D passed).
 
 ---
@@ -311,7 +311,7 @@ Phase 3 (act + escalate, sync) ──► Sync D (end-to-end flow, observability 
 ## 8. Document References
 
 - Master prompt: [docs/agents/master-prompt.md](agents/master-prompt.md)
-- Five approaches (Deutsche Telekom): [docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md](FIVE_APPROACHES_DEUTSCHE_TELEKOM.md)
+- Five approaches (telecom enterprise): [docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md](FIVE_APPROACHES_DEUTSCHE_TELEKOM.md)
 - Integration: [docs/INTEGRATION.md](INTEGRATION.md)
 - CREATE_SERVICE: [CREATE_SERVICE.md](../../CREATE_SERVICE.md) (repo root)
 - AI microservice: [ai-microservice/README.md](../../ai-microservice/README.md)

@@ -1,6 +1,6 @@
 # Agentic Email Processing System
 
-Prototype of an **Agentic AI Email Triage System** for autonomous processing of inbound business emails in a Deutsche Telekom–oriented context ([telekom.com](https://www.telekom.com)).
+Prototype of an **Agentic AI Email Triage System** for autonomous processing of inbound business emails in an enterprise telecom business context.
 
 ## Purpose
 
@@ -20,7 +20,7 @@ We use the **existing [ai-microservice](../ai-microservice/)** (see [ai-microser
 - **Task index (phases, sync points, agent prompts):** [docs/EMAIL_TRIAGE_TASKS_INDEX.md](docs/EMAIL_TRIAGE_TASKS_INDEX.md)
 - **Contracts (Phase 0, Sync A passed):** [docs/contracts/](docs/contracts/) — email/event schema, intent taxonomy, action set, routing, escalation.
 - **Integration and API:** [docs/INTEGRATION.md](docs/INTEGRATION.md)
-- **Design approaches:** Documented and reasoned for Deutsche Telekom in the master prompt (autonomous workflow, LLM/agent orchestration, reliability and observability, handling ambiguity, business-oriented automation).
+- **Design approaches:** Documented and reasoned in the master prompt (autonomous workflow, LLM/agent orchestration, reliability and observability, handling ambiguity, business-oriented automation).
 - **Service creation:** Follows [CREATE_SERVICE.md](../CREATE_SERVICE.md) (env discipline, logging, no hardcoded values, shared microservices).
 - **AI microservice:** [ai-microservice/README.md](../ai-microservice/README.md) — existing agents and integration; we extend with email-triage agents.
 

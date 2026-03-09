@@ -1,6 +1,6 @@
 # Intent Taxonomy
 
-Canonical intent labels and rules for the Classifier Agent. Aligned with business scenario and Deutsche Telekom–reasoned handling of ambiguity (FIVE_APPROACHES §4).
+Canonical intent labels and rules for the Classifier Agent. Aligned with the business scenario and the ambiguity-handling principles defined in the five design approaches (FIVE_APPROACHES §4).
 
 ## Primary Intents (Single-Label)
 

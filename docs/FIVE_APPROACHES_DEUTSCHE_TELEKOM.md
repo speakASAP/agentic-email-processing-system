@@ -1,12 +1,12 @@
-# Five Design Approaches — Reasoned for Deutsche Telekom
+# Five Design Approaches — Reasoned for a Telecom Enterprise
 
-This document expands the five design approaches for the Agentic Email Processing System, with explicit reasoning for [Deutsche Telekom](https://www.telekom.com) context: scale, compliance, and brand.
+This document expands the five design approaches for the Agentic Email Processing System, with explicit reasoning for a large telecom enterprise context: scale, compliance, and brand.
 
 ## 1. Autonomous Workflow Design
 
 **Definition:** Workflows run without human intervention for well-defined cases: classify → extract → route/respond or escalate.
 
-**Deutsche Telekom reasoning:**
+**Telecom enterprise reasoning:**
 
 - **Scale:** Telekom Service handles approximately 74 million personal customer contacts per year. Manual triage does not scale; autonomy is necessary for throughput and latency.
 - **Consistency:** Rule- and model-driven workflows reduce human variance and support clear SLAs.
@@ -20,9 +20,9 @@ This document expands the five design approaches for the Agentic Email Processin
 
 **Definition:** Use LLMs and specialized agents (classifier, extractor, action selector, escalation evaluator) with a central orchestrator and explicit handoffs.
 
-**Deutsche Telekom reasoning:**
+**Telecom enterprise reasoning:**
 
-- **Separation of concerns:** One model should not both classify and draft responses; separation allows audit, model swapping, and governance (e.g. “AI at Deutsche Telekom”).
+- **Separation of concerns:** One model should not both classify and draft responses; separation allows audit, model swapping, and governance in line with corporate AI policies.
 - **Transparency:** Clear agent roles and handoffs support explainability and compliance (e.g. Whistleblower portal, Data Privacy).
 - **Flexibility:** Different agents can use different models or rules per task (e.g. strict classifier vs. creative drafter), fitting corporate AI strategy.
 
@@ -34,10 +34,10 @@ This document expands the five design approaches for the Agentic Email Processin
 
 **Definition:** Every email and every agent decision is logged; metrics on latency, classification distribution, escalation rate; alerts on anomalies and failures.
 
-**Deutsche Telekom reasoning:**
+**Telecom enterprise reasoning:**
 
 - **Compliance:** Data Privacy, Protection of Minors, and audit requirements demand full traceability of automated decisions.
-- **Operations:** As a critical telco, Deutsche Telekom cannot afford opaque automation; observability enables quick diagnosis and continuous improvement.
+- **Operations:** As a critical telco, the company cannot afford opaque automation; observability enables quick diagnosis and continuous improvement.
 - **Trust:** Customers and regulators expect reliable, explainable automation; logs and metrics are evidence.
 
 **Documentation deliverables:** Logging schema (message_id, timestamp, agent, decision, confidence, escalation_reason), integration with central logging service, and runbooks for operations.
@@ -50,11 +50,11 @@ This document expands the five design approaches for the Agentic Email Processin
 
 **Definition:** Explicit handling of unclear intent, missing fields, multilingual content, and edge cases via confidence scores, fallback rules, and safe default: escalate.
 
-**Deutsche Telekom reasoning:**
+**Telecom enterprise reasoning:**
 
 - **Reality of inbound mail:** Customer emails are messy (mixed intents, typos, incomplete data, multiple languages). Wrong automation can damage trust or violate policies.
 - **Risk aversion:** When in doubt, escalate rather than guess; document why something was ambiguous so that models and rules can be improved over time.
-- **Multilingual:** Deutsche Telekom operates internationally; handling non-German and mixed-language content is a business requirement.
+- **Multilingual:** The company operates internationally; handling non-German and mixed-language content is a business requirement.
 
 **Documentation deliverables:** Confidence thresholds per intent, rules for “unknown” and “multi-intent”, handling of incomplete/malformed payloads, and escalation reason taxonomy.
 
@@ -64,7 +64,7 @@ This document expands the five design approaches for the Agentic Email Processin
 
 **Definition:** Automation is driven by business outcomes: faster resolution, correct routing, fewer errors, compliance. Success metrics are defined and aligned with support, sales, and legal.
 
-**Deutsche Telekom reasoning:**
+**Telecom enterprise reasoning:**
 
 - **Strategic fit:** Aligns with “Customer Service” and “Smart business” priorities; automation must serve revenue, cost, risk, and reputation.
 - **Accountability:** Business KPIs (e.g. triage accuracy, time-to-route, escalation rate) make the system accountable to the organization.

@@ -14,7 +14,7 @@ You **do write code and configuration** (backend, frontend, integration, deploym
 
 ## 1. Assignment (Implementation Objective)
 
-Implement a **working production system** for the Agentic Email Processing System for a Deutsche Telekom–oriented business context that:
+Implement a **working production system** for the Agentic Email Processing System for a large-scale enterprise telecom business context that:
 
 1. Uses the existing **ai-microservice** (AI Orchestrator and agents) as described in its `README.md`.
 2. Provides a **backend API** that:
@@ -45,7 +45,7 @@ Before writing any code, you MUST carefully read and internalize at least:
 
 - `README.md` (project overview and goals).
 - `docs/agents/master-prompt.md` (design-stage orchestrator prompt — the system architecture and workflow are defined here).
-- `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` (design pillars and reasoning for Deutsche Telekom – you must keep this aligned when your implementation decisions affect them).
+- `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` (design pillars and reasoning for the target telecom business context – you must keep this aligned when your implementation decisions affect them).
 - `ai-microservice/README.md` (existing AI services, endpoints, ports, patterns; how to extend with email-triage–specific agents; this is where AI agents live).
 - `CREATE_SERVICE.md` (or equivalent path given in the docs) — environment, logging, shared microservices, deployment, blue/green, nginx-network.
 - Any **implementation plan markdown file** (e.g. in `docs/` or root) that outlines current phases, tasks, and checklists.
@@ -124,7 +124,7 @@ Each email must:
 3. Have a **final category and action** (e.g. route to support queue, ask sales to follow up, escalate, mark as spam).
 4. Be **visually inspectable** in the frontend so that a human can see that each step is correct and understand why.
 
-This system is meant to **convince stakeholders** that the Agentic system behaves correctly, transparently, and in alignment with Deutsche Telekom’s requirements.
+This system is meant to **convince stakeholders** that the Agentic system behaves correctly, transparently, and in alignment with the target enterprise’s requirements.
 
 ---
 

@@ -34,7 +34,7 @@ Validator check: End-to-end triage pipeline implemented; all steps logged; obser
 | Confidence thresholds and ambiguity handling documented and applied | Pass |
 | Action set and escalation contract implemented; escalation reasons auditable | Pass |
 | At least one end-to-end path: ingest → classify → extract → decide → act or escalate | Pass |
-| Five approaches (Deutsche Telekom) documented in FIVE_APPROACHES_DEUTSCHE_TELEKOM.md | Pass |
+| Five approaches for the target telecom enterprise documented in FIVE_APPROACHES_DEUTSCHE_TELEKOM.md | Pass |
 | Validator sign-off Sync A, B, C, D recorded | Pass |
 
 ## Result
