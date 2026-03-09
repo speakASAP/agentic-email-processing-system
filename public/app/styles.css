@@ -1,16 +1,16 @@
 /* Email Triage UI — landing-style, clear, modern */
 
 :root {
-  --bg: radial-gradient(circle at top left, rgba(255, 107, 107, 0.22) 0, rgba(15, 23, 42, 1) 42%), radial-gradient(circle at bottom right, #020617 0, #020617 55%, #020617 100%);
-  --surface: rgba(13, 20, 34, 0.96);
-  --border: #253047;
-  --text: #f7fafc;
-  --muted: #8b9ab4;
-  --accent: #ff6b6b;
-  --accent-soft: rgba(255, 107, 107, 0.12);
-  --success: #3fb950;
-  --warn: #f6c949;
-  --error: #ff4b6a;
+  --bg: linear-gradient(135deg, #f3f4ff 0%, #e0f2fe 40%, #fef9c3 100%);
+  --surface: rgba(255, 255, 255, 0.96);
+  --border: #e2e8f0;
+  --text: #111827;
+  --muted: #6b7280;
+  --accent: #667eea;
+  --accent-soft: rgba(102, 126, 234, 0.12);
+  --success: #16a34a;
+  --warn: #eab308;
+  --error: #dc2626;
 }
 
 * { box-sizing: border-box; }
