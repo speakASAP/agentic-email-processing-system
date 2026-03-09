@@ -133,11 +133,6 @@ No mandatory implementation work remains for the master-prompt-development scope
 1. **Smoke test on prod:** After `git pull` on prod, run `./scripts/deploy.sh` and verify <https://aeps.alfares.cz> loads, then run one email and "Run all 50" to confirm end-to-end and polling.
 2. **Logging microservice:** Ensure `LOGGING_SERVICE_URL` is reachable from the app (local and prod) so "See logs…" returns data; if not, check network and env.
 3. **ai-microservice:** Ensure email-triage agents (ingest, classify, extract, decide) are deployed and `AI_SERVICE_URL` points to them; otherwise triage will fail with 503 or ingest/classify errors.
-4. **Optional — LLM Classifier and Decider:** In ai-microservice, set `EMAIL_TRIAGE_LLM_CLASSIFIER=true` and/or `EMAIL_TRIAGE_LLM_DECIDER=true` to run classify/decide via free-ai-service (OpenRouter). When unset or on LLM failure, rule-based agents are used. See [INTEGRATION.md](INTEGRATION.md) and ai-microservice README.
-5. ✅ **Frontend theming:** Background updated from near-black to a colorful gradient (radial accent at top-left over deep navy) while preserving contrast and readability for the Email Triage UI on `/` and `https://aeps.alfares.cz`.
-6. ✅ **Log UX refinement:** Server and frontend updated so that:
-   - Per-email logs are scoped to the latest **Clear all**, **Clear**, or **Run triage / Run all 50 emails** event.
-   - The **See logs…** modal still shows the full log timeline for that email (in-memory first, then merged with central).
-   - Stage sections (Ingest → Classify → Extract → Decide) show only in-memory log lines for that specific stage of the current email run for faster, focused debugging.
+4. **Optional — LLM Classifier and Decider:** In ai-microservice, set `EMAIL_TRIAGE_LLM_CLASSIFIER=true` and/or `EMAIL_TRAIGE_LLM_DECIDER=true` to run classify/decide via free-ai-service (OpenRouter). When unset or on LLM failure, rule-based agents are used. See [INTEGRATION.md](INTEGRATION.md) and ai-microservice README.
 
 If new requirements appear (e.g. persistence to DB, new intents, or different frontend), add them as new tasks in Section 2–7 and track with ✅ as they are completed.

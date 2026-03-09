@@ -1,16 +1,16 @@
 /* Email Triage UI — landing-style, clear, modern */
 
 :root {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --border: #e5e7eb;
-  --text: #111827;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-soft: rgba(37, 99, 235, 0.12);
-  --success: #16a34a;
-  --warn: #eab308;
-  --error: #dc2626;
+  --bg: radial-gradient(circle at top left, #121926 0, #050812 55%, #02040a 100%);
+  --surface: rgba(13, 20, 34, 0.96);
+  --border: #253047;
+  --text: #f7fafc;
+  --muted: #8b9ab4;
+  --accent: #ff6b6b;
+  --accent-soft: rgba(255, 107, 107, 0.12);
+  --success: #3fb950;
+  --warn: #f6c949;
+  --error: #ff4b6a;
 }
 
 * { box-sizing: border-box; }
@@ -26,9 +26,9 @@ body {
 
 .header {
   padding: 1.75rem 1.5rem 1.25rem;
-  background: #ffffff;
+  background: linear-gradient(120deg, rgba(11, 23, 40, 0.98), rgba(15, 32, 63, 0.98));
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
 }
 .header h1 {
   margin: 0 0 0.35rem 0;
@@ -72,8 +72,8 @@ body {
 
 .main {
   padding: 1.5rem 1.5rem 2.5rem;
-  max-width: none;
-  margin: 0;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .list-section h2 {
