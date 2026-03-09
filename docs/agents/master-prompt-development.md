@@ -45,7 +45,7 @@ Before writing any code, you MUST carefully read and internalize at least:
 
 - `README.md` (project overview and goals).
 - `docs/agents/master-prompt.md` (design-stage orchestrator prompt — the system architecture and workflow are defined here).
-- `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` (design pillars and reasoning for the target telecom business context – you must keep this aligned when your implementation decisions affect them).
+- `docs/FIVE_APPROACHES.md` (design pillars and reasoning for the target telecom business context – you must keep this aligned when your implementation decisions affect them).
 - `ai-microservice/README.md` (existing AI services, endpoints, ports, patterns; how to extend with email-triage–specific agents; this is where AI agents live).
 - `CREATE_SERVICE.md` (or equivalent path given in the docs) — environment, logging, shared microservices, deployment, blue/green, nginx-network.
 - Any **implementation plan markdown file** (e.g. in `docs/` or root) that outlines current phases, tasks, and checklists.
@@ -200,17 +200,17 @@ Treat the following as **source of truth** for your implementation:
 
 - `README.md`
 - `docs/agents/master-prompt.md` (original Lead Orchestrator design prompt)
-- `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`
+- `docs/FIVE_APPROACHES.md`
 - `ai-microservice/README.md`
 - `.env.example` (keys only; update as needed, no secrets)
 - `.env` (actual configuration values; backup before modifications)
 - `docs/INTEGRATION.md` and `docs/EMAIL_TRIAGE_TASKS_INDEX.md` (when present)
 - Any existing **implementation plan markdown** file (e.g. `docs/IMPLEMENTATION_PLAN.md` or similar)
 - Other design docs describing:
-  - Email ingestion contract.
-  - Intent taxonomy.
-  - Action / escalation rules.
-  - Logging and observability schema.
+- Email ingestion contract.
+- Intent taxonomy.
+- Action / escalation rules.
+- Logging and observability schema.
 
 You must **not** contradict these artifacts. If you discover inconsistencies or missing details, resolve them in the **smallest possible way** and update the relevant docs accordingly.
 
@@ -280,10 +280,10 @@ You must **not** contradict these artifacts. If you discover inconsistencies or 
   - Use env-configured URLs (e.g. `AI_SERVICE_URL`) and **never hardcode** service addresses.
   - Log input and output summaries (without leaking secrets) for auditability.
 - Ensure the logging microservice receives:
-  - Message identifiers and timestamps.
-  - Agent name, decision, confidence, and escalation reason.
-  - Errors and stack traces where appropriate.
-- If the implementation affects any aspects documented in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`, update that document accordingly (e.g. concretely describe how the implemented observability satisfies the “Reliability and Observability” pillar).
+- Message identifiers and timestamps.
+- Agent name, decision, confidence, and escalation reason.
+- Errors and stack traces where appropriate.
+- If the implementation affects any aspects documented in `docs/FIVE_APPROACHES.md`, update that document accordingly (e.g. concretely describe how the implemented observability satisfies the “Reliability and Observability” pillar).
 
 ### 6.5 Deployment Readiness
 
@@ -338,21 +338,21 @@ Your work is considered successful when:
 4. **Deployment is documented and repeatable**:
    - There is a clear, documented path to build and deploy the service to prod using existing scripts (no manual nginx hacks).
 5. **Documentation is up to date**:
-   - Implementation plan markdown shows tasks with ✅ where done.
-   - Changes in implementation that affect the five approaches are reflected in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`.
-   - README and integration docs explain how to run the system and what to look for.
+- Implementation plan markdown shows tasks with ✅ where done.
+- Changes in implementation that affect the five approaches are reflected in `docs/FIVE_APPROACHES.md`.
+- README and integration docs explain how to run the system and what to look for.
 
 ---
 
 ## 9. First Actions
 
 1. **Read all required documentation**:
-   - `README.md`
-   - `docs/agents/master-prompt.md`
-   - `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`
-   - `ai-microservice/README.md`
-   - `CREATE_SERVICE.md` (or equivalent)
-   - Any existing implementation plan markdown file and integration docs.
+- `README.md`
+- `docs/agents/master-prompt.md`
+- `docs/FIVE_APPROACHES.md`
+- `ai-microservice/README.md`
+- `CREATE_SERVICE.md` (or equivalent)
+- Any existing implementation plan markdown file and integration docs.
 2. **Locate or create the implementation plan markdown file** (e.g. `docs/IMPLEMENTATION_PLAN.md` if not already defined) and:
    - Add tasks for:
      - Backend workflow implementation.

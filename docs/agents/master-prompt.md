@@ -16,12 +16,12 @@ Design and implement a **prototype** of an Agentic AI Email Triage System that c
 4. **Handling ambiguity and incomplete data**
 5. **Business-oriented automation**
 
-These five approaches must be well documented and reasoned for the target enterprise context (see `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`).
+These five approaches must be well documented and reasoned for the target enterprise context (see `docs/FIVE_APPROACHES.md`).
 
 ## Related Documentation
 
 - `README.md`
-- `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` (design pillars; five approaches reasoned for the target telecom enterprise)
+- `docs/FIVE_APPROACHES.md` (design pillars; five approaches reasoned for the target telecom enterprise)
 - `/Users/sergiystashok/Documents/GitHub/CREATE_SERVICE.md` (common service approach: env, logging, shared microservices, deployment)
 - `docs/INTEGRATION.md` (AI and shared microservice integration)
 - **Existing AI foundation:** `ai-microservice/README.md` (repo root) — we use the existing **ai-microservice** and extend it with our specific needed agents.
@@ -73,7 +73,7 @@ This prompt addresses the assignment’s five evaluation areas:
 | 4. Handling ambiguity and incomplete data | § Handling Ambiguity; confidence thresholds; escalate-by-default |
 | 5. Business-oriented automation | § Business-Oriented Automation; KPIs; intent→action→SLA mapping |
 
-All five are documented and reasoned for a large telecom enterprise in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` and summarized below.
+All five are documented and reasoned for a large telecom enterprise in `docs/FIVE_APPROACHES.md` and summarized below.
 
 ## Five Design Approaches (Telecom Enterprise)
 
@@ -132,7 +132,7 @@ All new agents must follow ai-microservice patterns (logging to `LOGGING_SERVICE
 
 - `README.md`
 - `docs/agents/master-prompt.md` (this file)
-- `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` — five approaches reasoned for the target telecom enterprise; keep updated when design decisions affect them
+- `docs/FIVE_APPROACHES.md` — five approaches reasoned for the target telecom enterprise; keep updated when design decisions affect them
 - `.env.example` — required env keys only (no secret values); single source of truth for config keys
 - **`ai-microservice/README.md`** — existing AI agents, ports, and integration
 - Email ingestion contract and intent taxonomy (when defined)
@@ -241,7 +241,7 @@ Your outputs must include:
 2. Agent prompts with DO/DO NOT rules (copy-paste ready per agent).
 3. Validation checklist for cutover (contracts, logging, escalation paths, observability).
 4. Updated documentation references (including the five approaches for the target telecom enterprise and any new contract/schema docs).
-5. When design decisions affect the five approaches, update `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md` so it remains the single source of truth for the enterprise-reasoned design.
+5. When design decisions affect the five approaches, update `docs/FIVE_APPROACHES.md` so it remains the single source of truth for the enterprise-reasoned design.
 
 Verify each deliverable against the assignment’s five areas (autonomous workflow, LLM orchestration, reliability/observability, ambiguity handling, business-oriented automation) and that the reasoning in the five approaches document is present where required.
 
@@ -267,7 +267,7 @@ Favor options that minimize long-term cost, preserve isolation between agents, a
 - Email and intent contracts defined and frozen.
 - At least one end-to-end path: ingest → classify → extract → decide → act or escalate.
 - All agent decisions and escalations logged; observability checklist documented.
-- Five approaches (autonomous workflow, LLM orchestration, reliability/observability, ambiguity handling, business-oriented automation) documented and reasoned for the target telecom enterprise in `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`, kept up to date when contracts or workflows change them.
+- Five approaches (autonomous workflow, LLM orchestration, reliability/observability, ambiguity handling, business-oriented automation) documented and reasoned for the target telecom enterprise in `docs/FIVE_APPROACHES.md`, kept up to date when contracts or workflows change them.
 - Validation agent sign-off on cutover checklist.
 
 ## First Action

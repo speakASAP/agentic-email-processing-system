@@ -1,6 +1,6 @@
 # Observability Checklist
 
-Checklist for logging, audit, and operations of the Agentic Email Processing System. Aligns with [event-schema](contracts/event-schema.md), [FIVE_APPROACHES_DEUTSCHE_TELEKOM.md](FIVE_APPROACHES_DEUTSCHE_TELEKOM.md) (Reliability and Observability), and Sync D cutover.
+Checklist for logging, audit, and operations of the Agentic Email Processing System. Aligns with [event-schema](contracts/event-schema.md), [FIVE_APPROACHES.md](FIVE_APPROACHES.md) (Reliability and Observability), and Sync D cutover.
 
 ## 1. Central Logging
 

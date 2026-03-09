@@ -18,7 +18,7 @@ This plan tracks implementation of the production system described in `docs/agen
   - `docs/agents/master-prompt.md`
   - `docs/agents/master-prompt-development.md`
   - `docs/EMAIL_TRIAGE_TASKS_INDEX.md`
-  - `docs/FIVE_APPROACHES_DEUTSCHE_TELEKOM.md`
+  - `docs/FIVE_APPROACHES.md`
   - `docs/INTEGRATION.md`
   - Root `CREATE_SERVICE.md`
   - `ai-microservice/README.md`
@@ -97,7 +97,7 @@ Goal: Align implementation with the ecosystem’s blue/green deployment and ngin
 
 Goal: Align implementation with design docs and success criteria; keep documentation current.
 
-- ✅ Update FIVE_APPROACHES_DEUTSCHE_TELEKOM.md
+- ✅ Update FIVE_APPROACHES.md
   - ✅ Section 3 "Reliability and Observability": added "Implementation (current prototype)" describing logging schema, central logging integration via `utils/logger.js`, and that runbooks are ops responsibility.
 - ✅ Explanation trail in frontend
   - ✅ Detail view shows a one-line "explanation" summary (why escalated, routed where, action, category + confidence) so stakeholders see how the final decision was reached without reloading.
