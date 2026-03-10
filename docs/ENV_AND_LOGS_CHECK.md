@@ -31,6 +31,7 @@ Logs are written to **three places** in AEPS; ai-microservice uses central loggi
 **Where in code:** `server.js` → `runLogBuffer` (Map keyed by `message_id`). Filled by `pushRunLog(message_id, level, message, metadata)`.
 
 **Entry structure (each log line):**
+
 ```json
 {
   "level": "info",
@@ -59,18 +60,22 @@ Logs are written to **three places** in AEPS; ai-microservice uses central loggi
 - **In-memory only (no central fetch, fastest):**  
   `GET /api/emails/<message_id>/logs?source=memory`  
   Example:
+
   ```bash
   curl -s "https://aeps.alfares.cz/api/emails/sample-002/logs?source=memory"
   ```
+
   Response: `{ "logs": [ { "level", "message", "timestamp", "metadata" }, ... ] }`.
 
 - **Merged with central (default):**  
   `GET /api/emails/<message_id>/logs`  
   Optional query: `?limit=300` (max 500).  
   Example:
+
   ```bash
   curl -s "https://aeps.alfares.cz/api/emails/sample-002/logs?limit=300"
   ```
+
   Response: `{ "logs": [...], "error": "..." }` (optional `error` if central fetch failed; in-memory is still returned).
 
 **Filtering after Clear all:**  
@@ -84,6 +89,7 @@ When you click **Clear all**, the server sets `logsClearAllTimestamp` and clears
 
 **Where on disk:**  
 `<LOG_DIR>/run.log`  
+
 - `LOG_DIR` from `.env` (e.g. `LOG_DIR=logs`). Default: `logs` relative to the server process (when run from repo: `<project_root>/agentic-email-processing-system/logs/run.log`).  
 - If `LOG_DIR` is absolute (e.g. `/var/log/aeps`), file is at `/var/log/aeps/run.log`.  
 - Code: `server.js` → `getRunLogPath()` (uses `LOG_DIR`, default `RUN_LOG_FILE = 'run.log'`).
@@ -122,11 +128,13 @@ Each line is a single JSON object: `{ "level", "message", "service", "timestamp"
 **What:** `utils/logger.js` sends each `logger.info` / `logger.error` / `logger.emitEvent` to the central logging microservice (POST). All server and pipeline logs (including use_llm flow) go there. For the first **30 seconds** after startup, logs are written only to **console** (so healthchecks are not slowed); after that, POST is used. If POST fails or times out (2s), the line is still printed to console (2.4).
 
 **Env:**  
+
 - `LOGGING_SERVICE_URL` — base URL (e.g. `https://logging.alfares.cz`, `http://logging-microservice-backend-green:3367`). If empty, central POST is skipped.  
 - `LOGGING_SERVICE_API_PATH` — path for **POST** (default `/api/logs`).  
 - **Query** is always: `GET <base>/api/logs/query?service=...&limit=...` (path is fixed in AEPS code).
 
 **How logs are sent (POST):**  
+
 - URL: `LOGGING_SERVICE_URL + LOGGING_SERVICE_API_PATH` (e.g. `https://logging.alfares.cz/api/logs`).  
 - Body: `{ "level": "info", "message": "...", "service": "<SERVICE_NAME>", "timestamp": "<ISO>", "metadata": { ... } }`.  
 - `service` = `SERVICE_NAME` from AEPS `.env` (e.g. `aeps-service`).
@@ -137,13 +145,17 @@ Each line is a single JSON object: `{ "level", "message", "service", "timestamp"
   Open the logging service web UI (e.g. `https://logging.alfares.cz`). Filter by **service** = `aeps-service` (or whatever `SERVICE_NAME` is in AEPS .env). Logs show timestamp, level, message, service, metadata.
 
 - **Direct query API (curl):**  
-  ```
+
+  ```bash
   GET <LOGGING_SERVICE_URL>/api/logs/query?service=<SERVICE_NAME>&limit=<N>
   ```
+
   Example (replace host if different):
+
   ```bash
   curl -s "https://logging.alfares.cz/api/logs/query?service=aeps-service&limit=300"
   ```
+
   Typical response shape: `{ "data": [ { "timestamp", "level", "message", "service", "metadata" }, ... ] }`. Exact shape is logging-microservice-specific.
 
 - **Filter by message_id:**  
@@ -159,11 +171,13 @@ Each line is a single JSON object: `{ "level", "message", "service", "timestamp"
 
 - **Docker (deployed AEPS):**  
   Container name is typically `agentic-email-processing-system-blue` or `agentic-email-processing-system-green` (active slot).  
+
   ```bash
   docker ps --format '{{.Names}}' | grep -E 'agentic-email|aeps'
   docker logs -f agentic-email-processing-system-blue
   docker logs --tail 500 agentic-email-processing-system-blue
   ```
+
 - **PM2:**  
   `pm2 logs <aeps-app-name>`
 - **Local run:**  
@@ -173,6 +187,7 @@ Each line is a single JSON object: `{ "level", "message", "service", "timestamp"
 Example: `[2026-03-08T12:00:00.000Z] [info] [aeps-service] Triage pipeline started { useLlmClassifier: true, useLlmDecider: true }`
 
 **Grep stdout (Docker):**
+
 ```bash
 docker logs agentic-email-processing-system-blue 2>&1 | grep -E 'use_llm|model_used|classify|decide'
 docker logs agentic-email-processing-system-blue 2>&1 | grep -E 'ERROR|POINT OF FAILURE'
@@ -188,22 +203,28 @@ docker logs agentic-email-processing-system-blue 2>&1 | grep -E 'ERROR|POINT OF 
 
 - **Central logging:**  
   Same base URL as in 2.3. Query by service name (often `ai-microservice` or as in orchestrator .env):  
+
   ```bash
   curl -s "https://logging.alfares.cz/api/logs/query?service=ai-microservice&limit=300"
   ```
 
 - **Stdout (Docker):**  
   Container names are typically `ai-microservice-orchestrator-blue` / `-green`, `ai-microservice-free-ai-service-blue` / `-green`.  
+
   ```bash
   docker ps --format '{{.Names}}' | grep ai-microservice
   docker logs -f ai-microservice-orchestrator-blue
   docker logs -f ai-microservice-free-ai-service-blue
   ```
+
   **Orchestrator** (classify/decide, use_llm, FREE_AI_SERVICE_URL):  
+
   ```bash
   docker logs ai-microservice-orchestrator-blue 2>&1 | grep -E 'classify|decide|use_llm|model_used|POINT OF FAILURE'
   ```
+
   **Free-ai-service** (OpenRouter 404, model fallback):  
+
   ```bash
   docker logs ai-microservice-free-ai-service-blue 2>&1 | grep -E 'OpenRouter|404|model|analyze'
   ```
@@ -296,7 +317,7 @@ Search logs for these to trace where the parameter is set or lost:
 
 ## 6. Quick verification
 
-1. Open **https://aeps.alfares.cz/** (not the long hostname).
+1. Open **<https://aeps.alfares.cz/>** (not the long hostname).
 2. Set Classifier and Decider to **AI (LLM)** in the UI.
 3. Run one email or Run all 50.
 4. In "See logs…" for an email, confirm:
@@ -310,56 +331,5 @@ Search logs for these to trace where the parameter is set or lost:
 
 This error means the UI sent `use_llm: true` but the ai-orchestrator either had **FREE_AI_SERVICE_URL** unset or the call to free-ai-service failed (timeout, 5xx, or exception), so it fell back to rule-based and AEPS/ai-orchestrator then report the mismatch.
 
-### Local deployment (alfares.cz only)
-
-1. **Set FREE_AI_SERVICE_URL in ai-microservice .env**  
-   In the ai-microservice repo `.env` (e.g. `path/to/ai-microservice/.env`), ensure:
-   ```bash
-   FREE_AI_SERVICE_URL=http://ai-microservice-free-ai-service-green:3386
-   ```
-   (Use `-blue` if the active stack is blue.) If you use a single compose file without blue/green, use the container name from that compose (e.g. `http://ai-microservice-free-ai-service:3386`).
-
-2. **Set OPENROUTER_API_KEY in ai-microservice .env**  
-   free-ai-service needs this to call OpenRouter. Add (or uncomment):
-   ```bash
-   OPENROUTER_API_KEY=sk-or-...
-   ```
-
-3. **Verify orchestrator env and reachability**
-   ```bash
-   docker exec ai-microservice-orchestrator-green printenv FREE_AI_SERVICE_URL
-   docker exec ai-microservice-orchestrator-green curl -sf --connect-timeout 5 http://ai-microservice-free-ai-service-green:3386/health
-   ```
-   The health response should include `"healthy"`. If FREE_AI_SERVICE_URL is empty, restart the stack after fixing .env (compose passes it from .env or from the `environment` block).
-
-4. **Check free-ai-service logs**
-   ```bash
-   docker logs ai-microservice-free-ai-service-green --tail 100
-   ```
-   Look for OPENROUTER_API_KEY SET/NOT SET, connection errors, or 5xx from OpenRouter.
-
-5. **Redeploy ai-microservice locally**  
-   After editing .env, redeploy so the orchestrator and free-ai-service get the new env (from the repo that runs deploy, e.g. agentic-email-processing-system or nginx-microservice):
-   ```bash
-   ./scripts/deploy.sh
-   ```
-   Or from ai-microservice: build and up the active stack (blue or green) so containers pick up .env.
-
-6. **Re-test from AEPS**  
-   Open https://aeps.alfares.cz/ (canonical URL), set Classifier and Decider to **AI (LLM)**, Clear all, Run all 50. Check "See logs…" for an email: you should see `model: <OpenRouter model>` for classify and decide, not `rule-based`.
-
-### OpenRouter 402 / 404 (insufficient credits or free-tier policy)
-
-If free-ai-service logs show **OpenRouter API error: 402** (Insufficient credits) or **404** (No endpoints for free model / data policy), the app will **gracefully fall back** to rule-based: triage completes with `model_used: rule-based` and `llm_fallback_reason` in the response. Run all 50 will **succeed**; only the classifier/decider use rules instead of LLM.
-
-To use LLM again:
-
-- **402:** Add credits at https://openrouter.ai/settings/credits (or fix the API key / org).
-- **404 (data policy):** Configure free model publication at https://openrouter.ai/settings/privacy.
-- **404 (model not found):** The preferred free model may be deprecated; check free-ai-service model preferences for `email_classify` / `email_decide`.
-
-7. **If free-ai-service logs show OpenRouter 404/402**  
-   - free-ai-service tries **openrouter/free** first (router that auto-selects a free model); then specific free/paid models.  
-   - 404 often means "No endpoints for model" or "Free model publication" — check OpenRouter account settings (e.g. https://openrouter.ai/settings/privacy).  
-   - 402 means insufficient credits; use a free model (openrouter/free or :free variants) or add credits.  
-   - **Ollama fallback:** If `OLLAMA_URL` is set in ai-microservice .env (e.g. `http://host:11434`) and Ollama is reachable, free-ai-service will try Ollama when OpenRouter fails. Set `OLLAMA_URL` and run Ollama with a model (e.g. `llama2:7b`) to use local LLM for email-triage when OpenRouter is unavailable.
+1. **If free-ai-service logs show OpenRouter 404/402**  
+2  - free-ai-service tries **openrouter/free** first (router that auto-selects a free model); then specific free/paid models.  

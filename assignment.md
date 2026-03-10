@@ -7,6 +7,7 @@ As requested, here is an overview of how I approached and implemented the Agenti
 Your scenario is that large volumes of inbound business emails (support, sales, contracts, technical issues, billing, and spam) are currently triaged manually, which is slow, inconsistent, and error-prone.
 
 The goal of my solution (`agentic-email-processing-system`) is to automatically:
+
 1. Understand each incoming email
 2. Classify its intent
 3. Extract the relevant business information

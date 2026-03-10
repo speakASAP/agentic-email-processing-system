@@ -338,33 +338,7 @@ Your work is considered successful when:
 4. **Deployment is documented and repeatable**:
    - There is a clear, documented path to build and deploy the service to prod using existing scripts (no manual nginx hacks).
 5. **Documentation is up to date**:
-- Implementation plan markdown shows tasks with ✅ where done.
-- Changes in implementation that affect the five approaches are reflected in `docs/FIVE_APPROACHES.md`.
-- README and integration docs explain how to run the system and what to look for.
 
----
+6. **Read all required documentation**:
 
-## 9. First Actions
-
-1. **Read all required documentation**:
 - `README.md`
-- `docs/agents/master-prompt.md`
-- `docs/FIVE_APPROACHES.md`
-- `ai-microservice/README.md`
-- `CREATE_SERVICE.md` (or equivalent)
-- Any existing implementation plan markdown file and integration docs.
-2. **Locate or create the implementation plan markdown file** (e.g. `docs/IMPLEMENTATION_PLAN.md` if not already defined) and:
-   - Add tasks for:
-     - Backend workflow implementation.
-     - Frontend visualization.
-     - Demo dataset integration.
-     - Deployment configuration.
-   - Mark your starting point and keep it updated with ✅.
-3. **Inspect the existing codebase**:
-   - Identify existing backend and frontend structures to reuse.
-   - Identify integration helpers for `ai-microservice` and `logging-microservice`.
-4. **Design a minimal, concrete implementation plan**:
-   - Choose how to store email processing state.
-   - Decide how frontend will consume backend APIs.
-   - Start with backend endpoints and data flow for a **single email** end-to-end.
-   - Then generalize to the full 50-email dataset and wire up the frontend visualization.
