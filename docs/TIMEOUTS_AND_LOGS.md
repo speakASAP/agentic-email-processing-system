@@ -37,7 +37,7 @@ So the **time limit is on the client (agentic-email)**. If the request never rea
 
 3. **Central logging service**  
    Logs are sent to `LOGGING_SERVICE_URL` (e.g. `http://logging-microservice:3367`), path `LOGGING_SERVICE_API_PATH` (e.g. `/api/logs`).  
-   Use your central log UI (e.g. <https://logging.statex.cz>) and filter by service / message.
+   Use your central log UI (e.g. <https://logging.alfares.cz>) and filter by service / message.
 
 ### Email-triage log messages (orchestrator)
 
