@@ -1,7 +1,7 @@
 # Agentic Email Processing System — production image
 # Uses Node 20; env from .env at runtime (env_file in docker-compose).
 
-FROM node:20-alpine
+FROM node:24-slim
 
 WORKDIR /app
 
