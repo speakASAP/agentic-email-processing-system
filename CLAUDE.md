@@ -13,18 +13,22 @@ Read this repo's `BUSINESS.md` → `SYSTEM.md` → `AGENTS.md` → `TASKS.md` �
 **Stack**: NestJS · PostgreSQL · RabbitMQ · ai-microservice
 
 ### Key constraints
+
 - Never send email replies without human approval on first run per template
 - Emails with financial or legal content must always escalate to human — no auto-reply
 - Email credentials in `.env` only — never log them
 
 ### Key endpoints
+
 - `POST /api/ingest` — receive raw email
 - `POST /api/classify` — classify intent
 
 ### Events
+
 - Classified events → RabbitMQ → business-orchestrator (email signals → task triggers)
 
 ### Quick ops
+
 ```bash
 curl http://localhost:3374/health
 docker compose logs -f
