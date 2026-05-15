@@ -24,7 +24,7 @@ spec:
       containers:
         - name: app
           image: localhost:5000/agentic-email-processing-system:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3374
               name: http
