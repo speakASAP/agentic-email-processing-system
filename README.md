@@ -108,7 +108,7 @@ All configuration is via `.env`; keys (no secret values) are in `.env.example`. 
 | `AUTO_RESPOND_ENABLED` | Feature flag for auto-respond | `true` / `false` |
 | `LOG_DIR` | Local log directory (run logs stored in 3 places: central service, in-memory, and this dir) | `logs` (default) |
 
-Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are set on the server; local `.env` uses Docker network hostnames and the ports above.
+Production URLs (e.g. `https://ai.alfares.cz`, `https://logging.alfares.cz`) are set on the server; local `.env` uses Kubernetes service DNS names and the ports above.
 
 ### Ensuring LOGGING_SERVICE_URL and AI_SERVICE_URL
 
