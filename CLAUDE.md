@@ -9,3 +9,9 @@ Shared rules live here:
 - Repository operations: `AGENT_OPERATIONS.md`
 
 Read those first, then follow the repository-specific notes below and the current planning/status files.
+
+## Repository-Specific Notes
+
+# CLAUDE.md (agentic-email-processing-system)
+
+See `AGENTS.md` and `BUSINESS.md` for the ai-microservice reuse constraint and synthetic-data-only rule. This file is a thin compatibility pointer only; substantive policy lives in `AGENTS.md`.

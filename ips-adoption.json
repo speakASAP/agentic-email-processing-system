@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "profile": "runtime-service",
+  "project": {
+    "name": "agentic-email-processing-system",
+    "repository": "https://github.com/speakASAP/agentic-email-processing-system.git"
+  },
+  "standard": {
+    "repository": "https://github.com/speakASAP/intent-preservation-system",
+    "revision": "3e36f64c11e31b878fd2fe09267426738b25ae7f"
+  },
+  "artifacts": {
+    "readme": "README.md",
+    "business": "BUSINESS.md",
+    "system": "SYSTEM.md",
+    "agents": "AGENTS.md",
+    "operations": "AGENT_OPERATIONS.md",
+    "claude": "CLAUDE.md",
+    "tasks": "TASKS.md",
+    "state": "STATE.json",
+    "constitution": "docs/00_constitution/CONSTITUTION.md",
+    "vision": "docs/01_vision/VISION.md",
+    "integrationContract": "docs/06_architecture/INTEGRATION_CONTRACT.md",
+    "projectInvariants": "docs/17_governance/PROJECT_INVARIANTS.md",
+    "validationDebt": "docs/orchestrator/VALIDATION_DEBT.md",
+    "bootstrapTask": "docs/11_tasks/TASK-001-bootstrap-service.md",
+    "bootstrapGoalImpact": "docs/22_goal_impact/GOAL-IMPACT-TASK-001.md",
+    "bootstrapExecutionPlan": "docs/21_execution_plans/EP-TASK-001-bootstrap-service.md",
+    "bootstrapValidation": "docs/12_validation/VAL-TASK-001-bootstrap-service.md"
+  },
+  "integrationReview": [
+    {
+      "capability": "auth",
+      "component": "auth-microservice",
+      "decision": "required",
+      "reason": "SYSTEM.md documents auth-microservice as providing optional API and queue authentication, configured via `AUTH_SERVICE_URL` in .env.example.",
+      "contract": "Optional API/queue authentication via auth-microservice",
+      "configuration": "AUTH_SERVICE_URL configured in .env",
+      "failureMode": "When auth is not configured or unavailable, API endpoints operate per the documented optional-auth mode; this must not silently bypass authorization where it is enabled.",
+      "validation": "Auth-enabled route smoke checks when AUTH_SERVICE_URL is configured."
+    },
+    {
+      "capability": "postgres",
+      "component": "database-server (db-server-postgres)",
+      "decision": "not-applicable",
+      "reason": "`.env.example` declares optional DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME variables, but no code in server.js references them; the service currently runs entirely on the in-memory/disk-backed sample dataset without a mandatory PostgreSQL dependency."
+    },
+    {
+      "capability": "redis",
+      "component": "database-server (db-server-redis)",
+      "decision": "not-applicable",
+      "reason": "No Redis client, environment variable, or documented usage exists anywhere in this repository."
+    },
+    {
+      "capability": "logging",
+      "component": "logging-microservice",
+      "decision": "required",
+      "reason": "SYSTEM.md and .env.example document LOGGING_SERVICE_URL as the central event/log collection endpoint used for every pipeline step and the web UI's per-email log viewer.",
+      "contract": "Structured event/log delivery per pipeline step via LOGGING_SERVICE_URL",
+      "configuration": "LOGGING_SERVICE_URL, LOGGING_SERVICE_API_PATH, LOGS_CENTRAL_TIMEOUT_MS in .env",
+      "failureMode": "Logging outage degrades the web UI's log viewer and central observability; local LOG_DIR and in-memory logs remain available as documented fallback.",
+      "validation": "Structured log delivery checks and the web UI 'See logs...' viewer."
+    },
+    {
+      "capability": "notifications",
+      "component": "notifications-microservice",
+      "decision": "required",
+      "reason": "SYSTEM.md documents notifications-microservice as an optional integration via NOTIFICATION_SERVICE_URL in .env.example for triage-related notifications.",
+      "contract": "Optional notification dispatch via NOTIFICATION_SERVICE_URL",
+      "configuration": "NOTIFICATION_SERVICE_URL in .env",
+      "failureMode": "Notification failures degrade operator awareness without blocking the core triage pipeline.",
+      "validation": "Notification dispatch smoke checks when configured."
+    },
+    {
+      "capability": "ai",
+      "component": "ai-microservice",
+      "decision": "required",
+      "reason": "This is the core dependency: classify/extract/decide proxy directly to ai-microservice via AI_SERVICE_URL, per README.md and BUSINESS.md's explicit reuse constraint.",
+      "contract": "Proxied AI execution calls for classify/extract/decide per the documented email-triage contracts",
+      "configuration": "AI_SERVICE_URL, AI_INGEST_TIMEOUT_MS, LLM_MODEL_CLASSIFIER, LLM_MODEL_EXTRACTOR in .env",
+      "failureMode": "AI service outage blocks classify/extract/decide stages and falls back to rule-based classification/decision per the documented model_used behavior.",
+      "validation": "Endpoint tests (scripts/test-email-triage-endpoints.js) and Sync B/C/D validation docs."
+    },
+    {
+      "capability": "payments",
+      "component": "payments-microservice",
+      "decision": "not-applicable",
+      "reason": "This service triages email; it has no payment processing concern."
+    },
+    {
+      "capability": "catalog",
+      "component": "catalog-microservice",
+      "decision": "not-applicable",
+      "reason": "No catalog/product-domain concern exists in this email-triage service."
+    },
+    {
+      "capability": "orders",
+      "component": "orders-microservice",
+      "decision": "not-applicable",
+      "reason": "No order-processing concern exists in this email-triage service."
+    },
+    {
+      "capability": "warehouse",
+      "component": "warehouse-microservice",
+      "decision": "not-applicable",
+      "reason": "No physical inventory concern exists in this email-triage service."
+    },
+    {
+      "capability": "invoices",
+      "component": "invoices-microservice",
+      "decision": "not-applicable",
+      "reason": "No invoicing concern exists in this email-triage service."
+    },
+    {
+      "capability": "object-storage",
+      "component": "minio-microservice",
+      "decision": "not-applicable",
+      "reason": "No object-storage usage was found in this repository; email attachments/content are not persisted to MinIO in the current implementation."
+    },
+    {
+      "capability": "event-bus",
+      "component": "RabbitMQ",
+      "decision": "not-applicable",
+      "reason": "The `.env.example` declares an EMAIL_INGESTION_QUEUE variable, but no RabbitMQ/AMQP client code exists in server.js; ingestion is via direct HTTP POST, not the shared event bus."
+    },
+    {
+      "capability": "docs-rag",
+      "component": "docs-rag-microservice",
+      "decision": "required",
+      "reason": "AGENTS.md already directs agents to use docs-rag-microservice for bounded discovery on this repository, with Git as the authoritative fallback.",
+      "contract": "Direct Git repository ingestion and repository-scoped retrieval",
+      "configuration": "Tracked in the canonical repository registry and docs-RAG index",
+      "failureMode": "When docs-RAG is unavailable, Git remains authoritative per AGENTS.md.",
+      "validation": "Repository documents resolve to the owning repository path and remain discoverable."
+    },
+    {
+      "capability": "monitoring",
+      "component": "monitoring-microservice",
+      "decision": "required",
+      "reason": "Runtime health and rollout readiness must be observable through the shared monitoring model, consistent with the documented `GET /health` deploy-script check.",
+      "contract": "GET /health and Kubernetes readiness checks for rollout control",
+      "configuration": "Deployment probes and health endpoint in deploy.config.sh / k8s manifests",
+      "failureMode": "An unhealthy service is prevented from passing rollout readiness and is reported to the owner.",
+      "validation": "The monitoring stack confirms health, readiness, and service availability."
+    },
+    {
+      "capability": "backups",
+      "component": "backups-microservice",
+      "decision": "not-applicable",
+      "reason": "The service holds no durable database (PostgreSQL usage is optional and currently unused); the sample dataset is a versioned repository file, not a production data store requiring backup."
+    }
+  ]
+}

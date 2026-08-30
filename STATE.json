@@ -1,1 +1,18 @@
-{"v":1,"project":"agentic-email-processing-system","stage":"production","health":"ok","cycle":0,"last_cycle_at":"2026-04-05T00:00:00Z","tasks_active":0,"tasks_failed_last_cycle":0,"open_task_ids":[],"last_milestone":"documentation-standard-applied","next_focus":"review and update by owner","blockers":[],"budget_units_used":0,"metrics":{"custom":{}}}
+{
+  "schemaVersion": 1,
+  "project": "agentic-email-processing-system",
+  "lifecycle": "active",
+  "health": "healthy",
+  "activeTask": "TASK-AEPS-001: pending owner decision on next implementation lane",
+  "lastUpdated": "2026-08-30",
+  "deployment": {
+    "status": "commit-triggered-auto-queue",
+    "image": null,
+    "revision": null
+  },
+  "blockers": [],
+  "followUps": [
+    "Await owner decision on TASK-AEPS-001 next-lane priority (endpoint verification, AI connectivity readiness, or triage operations hardening)",
+    "IPS adoption profile completed 2026-08-30; run the planning validator before further scope changes"
+  ]
+}

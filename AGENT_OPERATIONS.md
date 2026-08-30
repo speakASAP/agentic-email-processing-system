@@ -1,66 +1,35 @@
 # Agent Operations
 
-This repository follows the company Cross-Agent Automation Standard from the Intent Preservation System.
+## roles
 
-## Required Chain
+- Readiness scanner: classifies work as ready now, dependency-gated, blocked, complete, or owner-input required
+- Worker agent: handles one bounded implementation goal with explicit scope
+- Worker monitor: checks active work, blockers, and shared-file conflicts
+- Integration validator: checks acceptance criteria, validation evidence, and current-task regressions
 
-All agents must preserve:
+## before work
 
-```text
-Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding Prompt -> Code -> Validation
-```
+Before implementation, confirm:
 
-## Agent Roles
+- the active goal matches repository intent
+- required reading is complete
+- task/state traceability is present
+- blockers and owner decisions are explicit
+- validation commands are known and narrow
 
-- Readiness scanner: classifies work as ready now, dependency-gated, blocked, active elsewhere, complete, or needs owner input. It does not implement.
-- Worker agent: implements one bounded goal or workstream with explicit scope.
-- Worker monitor: checks active worker status and conflict risks.
-- Integration validator: validates worker batches and separates current-task failures from known validation debt.
+## parallel work
 
-## Before Work
+Keep parallel workstreams separate by file ownership and validation owner. Shared-file edits require one integration owner and an explicit merge order.
 
-Read repository-local instructions and planning sources first, including any `AGENTS.md`, `TASKS.md`, `STATE.json`, `docs/orchestrator/*`, `docs/intent-preservation/*`, or project-specific equivalents.
+## validation debt
 
-Before coding, verify:
+Use `docs/orchestrator/VALIDATION_DEBT.md` to record known out-of-scope validation failures. Validation debt does not replace current-task evidence or acceptance checks.
 
-- task and upstream traceability exist;
-- execution plan is approved or explicitly draft;
-- context package or equivalent source material exists;
-- sensitive-data classification is clear;
-- contract/schema and replay/determinism impact is clear;
-- validation commands are named;
-- parallel workstreams, blockers, shared files, integration owner, and merge order are defined.
+## handoff
 
-## Parallel Work
+Every handoff must include the active goal, current blockers, validation results, and the next concrete action.
 
-Do not start parallel edits to the same file, schema, migration, public contract, deployment file, generated index, or status document unless one integration owner and conflict-resolution order are documented.
+## project-specific operations
 
-Every parallel workstream must declare:
-
-- objective;
-- owner role;
-- allowed files;
-- forbidden files;
-- dependencies and blockers;
-- validation evidence;
-- expected output;
-- handoff notes.
-
-## Validation Debt
-
-Use `docs/orchestrator/VALIDATION_DEBT.md`, `docs/intent-preservation/VALIDATION_DEBT.md`, or the nearest repo-standard ledger to record known out-of-scope validation failures.
-
-Validation debt does not excuse current-task failures. If a failure touches current-task files or acceptance criteria, treat it as blocking.
-
-## Remote/Secret Safety
-
-- Do not copy remote repository contents into local user directories.
-- Deploy only under pre-existing human-approved project or ecosystem policy; agents cannot self-authorize by editing policy.
-- Do not print secrets, tokens, raw production data, customer identifiers, or private evidence.
-- Use `[MISSING: ...]` or `[UNKNOWN: ...]` instead of inventing facts.
-
-## Final Report
-
-Report files changed, documents created, validation evidence, validation debt used or added, blockers, deviations, and the next concrete action.
-
-Next step: Follow the repository-specific `AGENTS.md` and planning files for the current task.
+- Follow the allowed/forbidden file scoping already recorded in TASKS.md TASK-AEPS-001 for any implementation work beyond this documentation bootstrap
+- Validation checks referenced in TASKS.md: `git status --short --branch`, `git diff --check -- .`, `npm test`, and `npm run test:endpoints` when endpoint scope is approved
