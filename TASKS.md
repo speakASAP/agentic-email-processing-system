@@ -2,16 +2,13 @@
 
 This file is the concise human-readable work queue. Detailed task contracts live under `docs/11_tasks/` and execution records remain linked there.
 
-## active
-
+## Active
 - None currently in progress; TASK-AEPS-001 awaits an explicit owner decision on the next implementation lane (see TASKS.md Backlog).
 
-## ready next
-
+## Ready Next
 - TASK-AEPS-001: owner-approved decision on the first executable priority (endpoint verification, AI connectivity readiness, or email-triage operations hardening).
 
-## blocked
-
+## Blocked
 - None; TASK-AEPS-001 is a decision-pending backlog item, not a blocker.
 
 ## completed
