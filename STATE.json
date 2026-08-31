@@ -14,5 +14,32 @@
   "followUps": [
     "Await owner decision on TASK-AEPS-001 next-lane priority (endpoint verification, AI connectivity readiness, or triage operations hardening)",
     "IPS adoption profile completed 2026-08-30; run the planning validator before further scope changes"
-  ]
+  ],
+  "schema_version": "1.0",
+  "repository": "agentic-email-processing-system",
+  "service": {
+    "name": "agentic-email-processing-system",
+    "kind": "service",
+    "lifecycle": "active",
+    "deployment": "kubernetes"
+  },
+  "planning": {
+    "status": "active",
+    "active_goal_ids": [],
+    "next_ready_goal_ids": [],
+    "blocked_goal_ids": [],
+    "active_workstream_ids": [],
+    "last_updated_at": "2026-08-30T00:00:00Z"
+  },
+  "delivery": {
+    "last_validation_id": null,
+    "last_validation_status": null,
+    "validation_debt_count": 0,
+    "last_deployment_commit": null
+  },
+  "collection": {
+    "profile": "service",
+    "artifact_index": "docs/registry/ARTIFACT_INDEX.json",
+    "status_source": "human-and-agent-maintained; legacy state retained during Wave contract adoption"
+  }
 }
