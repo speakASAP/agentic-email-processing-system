@@ -7,6 +7,8 @@ This file is the concise human-readable work queue. Detailed task contracts live
 
 ## Ready Next
 - TASK-AEPS-001: owner-approved decision on the first executable priority (endpoint verification, AI connectivity readiness, or email-triage operations hardening).
+- Await owner decision on TASK-AEPS-001 next-lane priority (endpoint verification, AI connectivity readiness, or triage operations hardening)
+- IPS adoption profile completed 2026-08-30; run the planning validator before further scope changes
 
 ## Blocked
 - None; TASK-AEPS-001 is a decision-pending backlog item, not a blocker.
